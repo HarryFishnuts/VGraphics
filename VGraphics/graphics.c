@@ -59,6 +59,7 @@ static unsigned long long _updates = 0;
 
 /* color and size related data */
 static int _colR, _colG, _colB, _colA = 0;
+static int _tcolR, _tcolG, _tcolB, _tcolA = 255;
 static float _lineW = 1;
 static float _pointW = 1;
 static vgTexture _useTex;
@@ -203,6 +204,12 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 		_texture, NULL);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
+	/* setup texture filter params */
+	_tcolR = 255;
+	_tcolG = 255;
+	_tcolB = 255;
+	_tcolA = 255;
+
 	/* setup projection */
 	_windowWidth = window_w;
 	_windowHeight = window_h;
@@ -321,6 +328,8 @@ VAPI void vgSwap(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glBindTexture(GL_TEXTURE_2D, _texture);
+
+	glColor4ub(255, 255, 255, 255);
 
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);
@@ -478,12 +487,28 @@ VAPI void vgUseTexture(vgTexture target)
 	_useTex = target;
 }
 
+VAPI void vgTextureFilter(int r, int g, int b, int a)
+{
+	_tcolR = r;
+	_tcolG = g;
+	_tcolB = b;
+	_tcolA = a;
+}
+
+VAPI void vgTextureFilterReset(void)
+{
+	_tcolR = 255;
+	_tcolG = 255;
+	_tcolB = 255;
+	_tcolA = 255;
+}
+
 VAPI void vgRectTexture(int x, int y, int w, int h)
 {
 	psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
-	glColor4ub(255, 255, 255, 255);
+	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
 
 	glEnable(GL_TEXTURE_2D);
 
@@ -502,7 +527,7 @@ VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 	psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
-	glColor4ub(255, 255, 255, 255);
+	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
 
 	glEnable(GL_TEXTURE_2D);
 
@@ -581,7 +606,7 @@ VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	glScalef(s, s, 1); /* first, scale */
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
-	glColor4ub(255, 255, 255, 255);
+	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
 
 	glEnable(GL_TEXTURE_2D);
 	glCallList(_shapeBuffer[shape]);
@@ -747,6 +772,8 @@ VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_euTex]);
 
+	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
+
 	glEnable(GL_TEXTURE_2D);
 	glCallList(_shapeBuffer[shape]);
 	glDisable(GL_TEXTURE_2D);
@@ -790,6 +817,18 @@ VAPI void vgGetCursorPos(int* x, int* y)
 	int cy = (int)-my;
 	*x = cx;
 	*y = cy;
+}
+
+VAPI void vgGetCursorPosScaled(int* x, int* y)
+{
+	int mx, my;
+	vgGetCursorPos(&mx, &my);
+	float aspectW = (float)_resW / (float)_windowWidth;
+	float aspectH = (float)_resH / (float)_windowHeight;
+	mx *= aspectW;
+	my *= aspectH;
+	*x = mx;
+	*y = my;
 }
 
 VAPI int vgOnLeftClick(void)

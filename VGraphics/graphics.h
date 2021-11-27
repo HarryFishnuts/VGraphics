@@ -81,6 +81,8 @@ VAPI vgTexture vgCreateTexture(int w, int h, int linear, int repeat,
 	void* data);
 VAPI void vgDestroyTexture(vgTexture tex);
 VAPI void vgUseTexture(vgTexture target);
+VAPI void vgTextureFilter(int r, int g, int b, int a);
+VAPI void vgTextureFilterReset(void);
 VAPI void vgRectTexture(int x, int y, int w, int h);
 VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t);
 VAPI vgShape vgCompileShape(float* f2d_data, int size);
@@ -113,6 +115,7 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);
+VAPI void vgGetCursorPosScaled(int* x, int* y);
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
 

@@ -206,6 +206,11 @@ VAPI void vgTerminate(void)
 		glDeleteTextures(1, &_texBuffer[i]);
 	}
 
+	for (int i = 0; i < VG_SHAPES_MAX; i++)
+	{
+		glDeleteLists(_shapeBuffer[i], 1);
+	}
+
 	glfwTerminate();
 }
 

@@ -35,7 +35,7 @@
 /* DEFINITIONS */
 #define VG_TRUE (int)1
 #define VG_FALSE (int)0
-#define VG_TEXTURES_MAX 0x200
+#define VG_TEXTURES_MAX 0x400
 #define VG_SHAPES_MAX 0x300
 #define VG_WINDOW_SIZE_MIN 500
 #define VG_ITEX_COLORS_MAX 0x10
@@ -59,6 +59,7 @@ VAPI unsigned long long vgUpdateCount(void);
 VAPI void vgSetWindowSize(int window_w, int window_h);
 VAPI void vgGetResolution(int* w, int* h);
 VAPI void vgSetWindowTitle(const char* title);
+VAPI void vgGetScreenSize(int* width, int* height);
 
 /* CLEAR AND SWAP FUNCTIONS */
 VAPI void vgClear(void);
@@ -111,13 +112,16 @@ VAPI void vgEditShape(vgShape shape, float x, float y, float r, float s);
 VAPI void vgEditUseTexture(vgTexture tex);
 VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
+VAPI void vgEditClear(void);
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);
 VAPI void vgGetCursorPosScaled(int* x, int* y);
+VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
+	int sub_w, int sub_h);
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
-
+VAPI int vgCursorOverlap(int x, int y, int w, int h);
 
 #endif

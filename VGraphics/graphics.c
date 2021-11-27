@@ -174,6 +174,11 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	glewInit();
 
+	/* clear and swap to remove artifacts */
+	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glfwSwapBuffers(_window);
+
 	/* create framebuffer and texture */
 	glGenFramebuffers(1, &_framebuffer);
 	glGenTextures(1, &_texture);
@@ -284,6 +289,11 @@ VAPI void vgSetWindowSize(int window_w, int window_h)
 	glfwSetWindowSize(_window, window_w, window_h);
 	_windowWidth = window_w;
 	_windowHeight = window_h;
+
+	/* clear and swap to remove artifacts */
+	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glfwSwapBuffers(_window);
 }
 
 VAPI void vgGetResolution(int* w, int* h)
@@ -295,6 +305,14 @@ VAPI void vgGetResolution(int* w, int* h)
 VAPI void vgSetWindowTitle(const char* title)
 {
 	glfwSetWindowTitle(_window, title);
+}
+
+VAPI void vgGetScreenSize(int* width, int* height)
+{
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	GLFWvidmode* dims = glfwGetVideoMode(monitor);
+	*width = dims->width;
+	*height = dims->height;
 }
 
 /* CLEAR AND SWAP FUNCTIONS */
@@ -779,6 +797,14 @@ VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 	glDisable(GL_TEXTURE_2D);
 }
 
+VAPI void vgEditClear(void)
+{
+	esetup();
+	
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 {
 	/* bind FB and texture */
@@ -831,6 +857,26 @@ VAPI void vgGetCursorPosScaled(int* x, int* y)
 	*y = my;
 }
 
+VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
+	int sub_w, int sub_h)
+{
+	int mx, my;
+	float fx, fy;
+	vgGetCursorPosScaled(&mx, &my);
+	fx = mx; fy = my;
+
+	fx -= x;
+	fy -= y;
+	fx /= (float)w;
+	fy /= (float)h;
+	fx *= sub_w;
+	fy *= sub_h;
+
+	*rx = (int)fx;
+	*ry = (int)fy;
+	
+}
+
 VAPI int vgOnLeftClick(void)
 {
 	return -(GetKeyState(VK_LBUTTON) >> 15);
@@ -839,5 +885,12 @@ VAPI int vgOnLeftClick(void)
 VAPI int vgOnRightClick(void)
 {
 	return -(GetKeyState(VK_RBUTTON) >> 15);
+}
+
+VAPI int vgCursorOverlap(int x, int y, int w, int h)
+{
+	int mx, my;
+	vgGetCursorPosScaled(&mx, &my);
+	return (mx > x && mx < x + w) && (my > y && my < y + h);
 }
 

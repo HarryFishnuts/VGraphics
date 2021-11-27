@@ -1,0 +1,100 @@
+/******************************************************************************
+* <graphics.h>
+* Bailey Jia-Tao Brown
+* 2021
+* 
+*	Header file for primitive graphics library
+*	Contents:
+*		- Header guard
+*		- API definition
+*		- Definitions
+*		- Typedefs
+*		- Init function
+*		- Module init and terminate functions
+*		- Module update functions
+*		- Misc rendering functions
+*		- Clear, swap and fill functions
+*		- Basics draw functions
+*		- Advanced draw functions
+*		- ITex functions
+* 
+******************************************************************************/
+
+#ifndef __VGRAPHICS_INCLUDE__
+#define __VGRAPHICS_INCLUDE__
+
+/* API DEFINITION */
+#ifdef VGRAPHICS_EXPORTS
+#define VAPI __declspec(dllexport)
+#else
+#define VAPI __declspec(dllimport)
+#endif
+
+/* DEFINITIONS */
+#define VG_TRUE (int)1
+#define VG_FALSE (int)0
+#define VG_TEXTURES_MAX 0x200
+#define VG_SHAPES_MAX 0x300
+#define VG_WINDOW_SIZE_MIN 500
+#define VG_ITEX_COLORS_MAX 0x10
+#define VG_ITEX_SIZE_MAX 0x40
+
+/* TYPEDEFS */
+typedef unsigned short vgTexture;
+typedef unsigned short vgShape;
+
+/* INIT AND TERMINATE FUNCTIONS */
+VAPI void vgInit(int window_w, int window_h, int resolution_w,
+	int resolution_h, int decorated, int resizeable, int linear);
+VAPI void vgTerminate(void);
+
+/* MODULE UPDATE FUNCTIONS */
+VAPI void vgUpdate(void);
+VAPI int vgWindowShouldClose(void);
+VAPI unsigned long long vgUpdateCount(void);
+
+/* MISC RENDERING FUNCTIONS */
+VAPI void vgSetWindowSize(int window_w, int window_h);
+VAPI void vgGetResolution(int* w, int* h);
+VAPI void vgSetWindowTitle(const char* title);
+
+/* CLEAR AND SWAP FUNCTIONS */
+VAPI void vgClear(void);
+VAPI void vgFill(int r, int g, int b);
+VAPI void vgSwap(void);
+
+/* BASIC DRAW FUNCTIONS */
+VAPI void vgColor3(int r, int g, int b);
+VAPI void vgColor4(int r, int g, int b, int a);
+VAPI void vgRect(int x, int y, int w, int h);
+VAPI void vgLineSize(float size);
+VAPI void vgLine(int x1, int y1, int x2, int y2);
+VAPI void vgPointSize(float size);
+VAPI void vgPoint(int x, int y);
+VAPI void vgViewport(int x, int y, int w, int h);
+VAPI void vgViewportReset(void);
+
+/* ADVANCED DRAW FUNCTIONS */
+VAPI vgTexture vgCreateTexture(int w, int h, int linear, int repeat,
+	void* data);
+VAPI void vgDestroyTexture(vgTexture tex);
+VAPI void vgUseTexture(vgTexture target);
+VAPI void vgRectTexture(int x, int y, int w, int h);
+VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t);
+VAPI vgShape vgCompileShape(float* f2d_data, int size);
+VAPI vgShape vgCompileShapeTextured(float* f2d_data, float* t2d_data,
+	int size);
+VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s);
+VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
+	float s);
+
+/* ITEX FUNCTIONS */
+VAPI void vgITexDataClear(void);
+VAPI void vgITexDataColor(unsigned short index, int r, int g, int b, int a);
+VAPI void vgITexDataIndex(unsigned short index, int x, int y);
+VAPI void vgITexDataIndexArray(unsigned short index, int* vx, int* vy,
+	int size);
+VAPI vgTexture vgITexDataCompile(int width, int height, int repeat,
+	int linear);
+
+#endif

@@ -17,6 +17,7 @@
 *		- Advanced draw functions
 *		- ITex functions
 *		- Texture editing functions
+*		- Input related functions
 *
 ******************************************************************************/
 
@@ -772,5 +773,32 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 	glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	return data;
+}
+
+/* CURSOR RELATED FUNCTIONS */
+
+VAPI void vgGetCursorPos(int* x, int* y)
+{
+	double mx = 0;
+	double my = 0;
+
+	glfwGetCursorPos(_window, &mx, &my);
+
+	y += _windowHeight;
+
+	int cx = (int)mx;
+	int cy = (int)my;
+	*x = cx;
+	*y = cy;
+}
+
+VAPI int vgOnLeftClick(void)
+{
+	return -(GetKeyState(VK_LBUTTON) >> 15);
+}
+
+VAPI int vgOnRightClick(void)
+{
+	return -(GetKeyState(VK_RBUTTON) >> 15);
 }
 

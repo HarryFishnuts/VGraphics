@@ -18,6 +18,7 @@
 *		- Advanced draw functions
 *		- ITex functions
 *		- Texture editing functions
+*		- Input related functions
 * 
 ******************************************************************************/
 
@@ -109,5 +110,11 @@ VAPI void vgEditUseTexture(vgTexture tex);
 VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
+
+/* CURSOR RELATED FUNCTIONS */
+VAPI void vgGetCursorPos(int* x, int* y);
+VAPI int vgOnLeftClick(void);
+VAPI int vgOnRightClick(void);
+
 
 #endif

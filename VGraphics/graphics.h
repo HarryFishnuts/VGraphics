@@ -17,6 +17,7 @@
 *		- Basics draw functions
 *		- Advanced draw functions
 *		- ITex functions
+*		- Texture editing functions
 * 
 ******************************************************************************/
 
@@ -96,5 +97,17 @@ VAPI void vgITexDataIndexArray(unsigned short index, int* vx, int* vy,
 	int size);
 VAPI vgTexture vgITexDataCompile(int width, int height, int repeat,
 	int linear);
+
+/* TEXTURE EDITING FUNCTIONS */
+VAPI void vgEditTexture(vgTexture target, int w, int h);
+VAPI void vgEditColor(int r, int g, int b, int a);
+VAPI void vgEditPoint(int x, int y);
+VAPI void vgEditLine(int x1, int y1, int x2, int y2);
+VAPI void vgEditRect(int x, int y, int w, int h);
+VAPI void vgEditShape(vgShape shape, float x, float y, float r, float s);
+VAPI void vgEditUseTexture(vgTexture tex);
+VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
+	float s);
+VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
 #endif

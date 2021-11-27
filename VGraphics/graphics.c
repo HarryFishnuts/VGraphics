@@ -16,6 +16,7 @@
 *		- Basic draw functions
 *		- Advanced draw functions
 *		- ITex functions
+*		- Texture editing functions
 *
 ******************************************************************************/
 
@@ -68,6 +69,14 @@ static unsigned char _icolorB[VG_ITEX_COLORS_MAX] = { 0 };
 static unsigned char _icolorA[VG_ITEX_COLORS_MAX] = { 0 };
 static unsigned short _indexes[VG_ITEX_SIZE_MAX][VG_ITEX_SIZE_MAX] = { 0 };
 
+/* texture editing data */
+static vgTexture _eTex;
+static GLuint _eFrameBuffer = 0;
+static GLuint _rFrameBuffer = 0;
+static int _ecolR, _ecolG, _ecolB, _ecolA = 0;
+static int _eWidth, _eHeight = 0;
+static vgTexture _euTex;
+
 /* ================================== */
 
 /* INTERNAL HELPER FUNCTIONS */
@@ -99,6 +108,22 @@ static inline void rsetup(void)
 	glViewport(0, 0, _windowWidth, _windowHeight);
 
 	glColor4ub(255, 255, 255, 255);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
+static inline void esetup(void)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, _eFrameBuffer);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, _eWidth, 0, _eHeight);
+
+	glViewport(0, 0, _eWidth, _eHeight);
+
+	glColor4ub(_ecolR, _ecolG, _ecolB, _ecolA);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -188,6 +213,14 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_vpw = resolution_w;
 	_vph = resolution_h;
 
+	/* init texture editing data */
+	glGenFramebuffers(1, &_eFrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, &_eFrameBuffer);
+
+	/* init texture reading framebuffer */
+	glGenFramebuffers(1, &_rFrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, &_rFrameBuffer);
+
 	/* setup blend funcs */
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -199,16 +232,20 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 VAPI void vgTerminate(void)
 {
 	glDeleteFramebuffers(1, &_framebuffer);
+	glDeleteFramebuffers(1, &_eFrameBuffer);
+	glDeleteFramebuffers(1, &_rFrameBuffer);
 	glDeleteTextures(1, &_texture);
 
 	for (int i = 0; i < VG_TEXTURES_MAX; i++)
 	{
 		glDeleteTextures(1, &_texBuffer[i]);
+		_texBuffer[i] = NULL;
 	}
 
 	for (int i = 0; i < VG_SHAPES_MAX; i++)
 	{
 		glDeleteLists(_shapeBuffer[i], 1);
+		_shapeBuffer[i] = NULL;
 	}
 
 	glfwTerminate();
@@ -622,5 +659,118 @@ VAPI vgTexture vgITexDataCompile(int width, int height, int repeat,
 	free(colorBuffer);
 
 	return handle;
+}
+
+/* TEXTURE EDITING FUNCTIONS */
+
+VAPI void vgEditTexture(vgTexture target, int w, int h)
+{
+	/* bind editing framebuffer to target texture */
+	glBindFramebuffer(GL_FRAMEBUFFER, _eFrameBuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+		_texBuffer[target], NULL);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	/* setup other data */
+	_eWidth = w;
+	_eHeight = h;
+}
+
+VAPI void vgEditColor(int r, int g, int b, int a)
+{
+	_ecolR = r;
+	_ecolG = g;
+	_ecolB = b;
+	_ecolA = a;
+}
+
+VAPI void vgEditPoint(int x, int y)
+{
+	esetup();
+
+	glPointSize(1);
+
+	glBegin(GL_POINTS);
+	glVertex2i(x, y);
+	glEnd();
+}
+
+VAPI void vgEditLine(int x1, int y1, int x2, int y2)
+{
+	esetup();
+
+	glLineWidth(1);
+
+	glBegin(GL_LINES);
+	glVertex2i(x1, y1);
+	glVertex2i(x2, y2);
+	glEnd();
+}
+
+VAPI void vgEditRect(int x, int y, int w, int h)
+{
+	esetup();
+
+	glBegin(GL_QUADS);
+	glVertex2i(x, y);
+	glVertex2i(x, y + h);
+	glVertex2i(x + w, y + h);
+	glVertex2i(x + w, y);
+	glEnd();
+}
+
+VAPI void vgEditShape(vgShape shape, float x, float y, float r, float s)
+{
+	esetup();
+
+	glTranslatef(x, y, 0); /* third, transalate */
+	glScalef(s, s, 1); /* second, scale */
+	glRotatef(r, 0, 0, 1); /* first, rotate */
+
+	glCallList(_shapeBuffer[shape]);
+}
+
+VAPI void vgEditUseTexture(vgTexture tex)
+{
+	_euTex = tex;
+}
+
+VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
+	float s)
+{
+	esetup();
+
+	glTranslatef(x, y, 0); /* third, transalate */
+	glScalef(s, s, 1); /* second, scale */
+	glRotatef(r, 0, 0, 1); /* first, rotate */
+
+	glBindTexture(GL_TEXTURE_2D, _texBuffer[_euTex]);
+
+	glEnable(GL_TEXTURE_2D);
+	glCallList(_shapeBuffer[shape]);
+	glDisable(GL_TEXTURE_2D);
+}
+
+VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
+{
+	/* bind FB and texture */
+	glBindFramebuffer(GL_FRAMEBUFFER, _rFrameBuffer);
+	glBindTexture(GL_TEXTURE_2D, _texBuffer[tex]);
+
+	/* connect the two */
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+		_texBuffer[tex], NULL);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	
+	int size = (w * h * 4);
+
+	void* data = calloc(1, sizeof(unsigned char) * size);
+
+	if (data == NULL) printf("FAILED!");
+
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+	return data;
 }
 

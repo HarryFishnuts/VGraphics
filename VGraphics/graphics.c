@@ -784,10 +784,10 @@ VAPI void vgGetCursorPos(int* x, int* y)
 
 	glfwGetCursorPos(_window, &mx, &my);
 
-	y += _windowHeight;
+	my -= _windowHeight;
 
 	int cx = (int)mx;
-	int cy = (int)my;
+	int cy = (int)-my;
 	*x = cx;
 	*y = cy;
 }

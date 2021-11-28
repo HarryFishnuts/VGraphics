@@ -135,5 +135,6 @@ VAPI int vgCursorOverlap(int x, int y, int w, int h);
 VAPI void vgSaveTexture(vgTexture texture, const char* file, int w, int h);
 VAPI vgTexture vgLoadTexture(const char* file, int w, int h, int linear,
 	int repeat);
+VAPI void* vgLoadTextureData(const char* file, int w, int h);
 
 #endif

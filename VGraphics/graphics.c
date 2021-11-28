@@ -865,7 +865,7 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 
 	void* data = calloc(1, sizeof(unsigned char) * size);
 
-	if (data == NULL) printf("FAILED!");
+	if (data == NULL) return NULL;
 
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -971,20 +971,27 @@ VAPI vgTexture vgLoadTexture(const char* file, int w, int h, int linear,
 
 	fread(buffer, sizeof(unsigned char), w * h * 4, rFile);
 
-	for (int i = 0; i < w * h * 4; i++)
-	{
-		printf("%d ", buffer[i]);
-	}
-
 	/* create texture, free and close */
 	vgTexture rTex = vgCreateTexture(w, h, linear, repeat, buffer);
-
-	printf("\n rTex: %d", rTex);
 
 	free(buffer);
 	fflush(rFile);
 	fclose(rFile);
 
 	return rTex;
+}
+
+VAPI void* vgLoadTextureData(const char* file, int w, int h)
+{
+	/* allocate data buffer */
+	unsigned char* buffer = calloc(1, w * h * 4);
+	if (buffer == 0) return NULL;
+
+	/* open file and read */
+	FILE* rFile = fopen(file, "r");
+
+	fread(buffer, sizeof(unsigned char), w * h * 4, rFile);
+
+	return buffer;
 }
 

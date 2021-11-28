@@ -7,6 +7,7 @@
 *	Contents:
 *		- Preprocessor defs
 *		- Includes
+*		- Definitions
 *		- Internal resources
 *		- Internal helper functions
 *		- Module init and terminate functions
@@ -14,6 +15,7 @@
 *		- Misc rendering functions
 *		- Clear, swap and fill functions
 *		- Basic draw functions
+*		- Float variants
 *		- Advanced draw functions
 *		- ITex functions
 *		- Texture editing functions
@@ -39,6 +41,10 @@
 #include <glfw3.h> /* Window handler library */
 
 #include "graphics.h" /* Header */
+
+/* DEFINITIONS */
+#undef NULL
+#define NULL 0
 
 /* ========INTERNAL RESOURCES======== */
 
@@ -230,11 +236,11 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	/* init texture editing data */
 	glGenFramebuffers(1, &_eFrameBuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, &_eFrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, _eFrameBuffer);
 
 	/* init texture reading framebuffer */
 	glGenFramebuffers(1, &_rFrameBuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, &_rFrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, _rFrameBuffer);
 
 	/* setup blend funcs */
 	glEnable(GL_BLEND);
@@ -312,7 +318,7 @@ VAPI void vgSetWindowTitle(const char* title)
 VAPI void vgGetScreenSize(int* width, int* height)
 {
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-	GLFWvidmode* dims = glfwGetVideoMode(monitor);
+	const GLFWvidmode* dims = glfwGetVideoMode(monitor);
 	*width = dims->width;
 	*height = dims->height;
 }
@@ -333,10 +339,10 @@ VAPI void vgFill(int r, int g, int b)
 	glColor3ub(r, g, b);
 
 	glBegin(GL_QUADS);
-	glVertex2f(0.0, 0.0);
-	glVertex2f(0.0, _resH);
-	glVertex2f(_resW, _resH);
-	glVertex2f(_resW, 0.0);
+	glVertex2i(0, 0);
+	glVertex2i(0, _resH);
+	glVertex2i(_resW, _resH);
+	glVertex2i(_resW, 0);
 	glEnd();
 }
 
@@ -353,10 +359,10 @@ VAPI void vgSwap(void)
 
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0); glVertex2f(0.0, 0.0);
-	glTexCoord2f(0, 1); glVertex2f(0.0, _windowHeight);
-	glTexCoord2f(1, 1); glVertex2f(_windowWidth, _windowHeight);
-	glTexCoord2f(1, 0); glVertex2f(_windowWidth, 0.0);
+	glTexCoord2i(0, 0); glVertex2i(0, 0);
+	glTexCoord2i(0, 1); glVertex2i(0, _windowHeight);
+	glTexCoord2i(1, 1); glVertex2i(_windowWidth, _windowHeight);
+	glTexCoord2i(1, 0); glVertex2i(_windowWidth, 0);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
@@ -386,10 +392,10 @@ VAPI void vgRect(int x, int y, int w, int h)
 	psetup();
 
 	glBegin(GL_QUADS);
-	glVertex2f(x, y);
-	glVertex2f(x, y + h);
-	glVertex2f(x + w, y + h);
-	glVertex2f(x + w, y);
+	glVertex2i(x, y);
+	glVertex2i(x, y + h);
+	glVertex2i(x + w, y + h);
+	glVertex2i(x + w, y);
 	glEnd();
 }
 
@@ -405,8 +411,8 @@ VAPI void vgLine(int x1, int y1, int x2, int y2)
 	glLineWidth(_lineW);
 
 	glBegin(GL_LINES);
-	glVertex2f(x1, y1);
-	glVertex2f(x2, y2);
+	glVertex2i(x1, y1);
+	glVertex2i(x2, y2);
 	glEnd();
 }
 
@@ -440,6 +446,43 @@ VAPI void vgViewportReset(void)
 	_vpy = 0;
 	_vpw = _resW;
 	_vph = _resH;
+}
+
+/* FLOAT VARIANTS */
+
+VAPI void vgRectf(float x, float y, float w, float h)
+{
+	psetup();
+
+	glBegin(GL_QUADS);
+	glVertex2f(x, y);
+	glVertex2f(x, y + h);
+	glVertex2f(x + w, y + h);
+	glVertex2f(x + w, y);
+	glEnd();
+}
+
+VAPI void vgLinef(float x1, float y1, float x2, float y2)
+{
+	psetup();
+
+	glLineWidth(_lineW);
+
+	glBegin(GL_LINES);
+	glVertex2f(x1, y1);
+	glVertex2f(x2, y2);
+	glEnd();
+}
+
+VAPI void vgPointf(float x, float y)
+{
+	psetup();
+
+	glPointSize(_pointW);
+
+	glBegin(GL_POINTS);
+	glVertex2f(x, y);
+	glEnd();
 }
 
 /* ADVANCED DRAW FUNCTIONS */
@@ -533,10 +576,10 @@ VAPI void vgRectTexture(int x, int y, int w, int h)
 	glEnable(GL_TEXTURE_2D);
 
 	glBegin(GL_QUADS);
-	glTexCoord2d(0, 0); glVertex2f(x, y);
-	glTexCoord2d(0, 1); glVertex2f(x, y + h);
-	glTexCoord2d(1, 1); glVertex2f(x + w, y + h);
-	glTexCoord2d(1, 0); glVertex2f(x + w, y);
+	glTexCoord2i(0, 0); glVertex2i(x, y);
+	glTexCoord2i(0, 1); glVertex2i(x, y + h);
+	glTexCoord2i(1, 1); glVertex2i(x + w, y + h);
+	glTexCoord2i(1, 0); glVertex2i(x + w, y);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);
@@ -552,10 +595,10 @@ VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 	glEnable(GL_TEXTURE_2D);
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0 + s, 0 + t); glVertex2f(x, y);
-	glTexCoord2f(0 + s, 1 + t); glVertex2f(x, y + h);
-	glTexCoord2f(1 + s, 1 + t); glVertex2f(x + w, y + h);
-	glTexCoord2f(1 + s, 0 + t); glVertex2f(x + w, y);
+	glTexCoord2f(0 + s, 0 + t); glVertex2i(x, y);
+	glTexCoord2f(0 + s, 1 + t); glVertex2i(x, y + h);
+	glTexCoord2f(1 + s, 1 + t); glVertex2i(x + w, y + h);
+	glTexCoord2f(1 + s, 0 + t); glVertex2i(x + w, y);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);
@@ -681,7 +724,7 @@ VAPI vgTexture vgITexDataCompile(int width, int height, int repeat,
 {
 	/* create 2D compacted array buffer for color data to be stored */
 	unsigned char* colorBuffer;
-	colorBuffer = malloc(width * height * 4);
+	colorBuffer = malloc(sizeof(unsigned char) * width * height * 4);
 	if (colorBuffer == NULL) return 0;
 
 	int writeIndex = 0;
@@ -851,12 +894,14 @@ VAPI void vgGetCursorPosScaled(int* x, int* y)
 {
 	int mx, my;
 	vgGetCursorPos(&mx, &my);
+
+	float fx = (float)mx, fy = (float)my;
 	float aspectW = (float)_resW / (float)_windowWidth;
 	float aspectH = (float)_resH / (float)_windowHeight;
-	mx *= aspectW;
-	my *= aspectH;
-	*x = mx;
-	*y = my;
+	fx *= aspectW;
+	fy *= aspectH;
+	*x = (int)fx;
+	*y = (int)fy;
 }
 
 VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
@@ -865,7 +910,7 @@ VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
 	int mx, my;
 	float fx, fy;
 	vgGetCursorPosScaled(&mx, &my);
-	fx = mx; fy = my;
+	fx = (float)mx; fy = (float)my;
 
 	fx -= x;
 	fy -= y;

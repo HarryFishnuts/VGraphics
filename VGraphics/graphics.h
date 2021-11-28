@@ -15,6 +15,7 @@
 *		- Misc rendering functions
 *		- Clear, swap and fill functions
 *		- Basics draw functions
+*		- Float variants
 *		- Advanced draw functions
 *		- ITex functions
 *		- Texture editing functions
@@ -77,6 +78,11 @@ VAPI void vgPointSize(float size);
 VAPI void vgPoint(int x, int y);
 VAPI void vgViewport(int x, int y, int w, int h);
 VAPI void vgViewportReset(void);
+
+/* FLOAT VARIANTS */
+VAPI void vgRectf(float x, float y, float w, float h);
+VAPI void vgLinef(float x1, float y1, float x2, float y2);
+VAPI void vgPointf(float x, float y);
 
 /* ADVANCED DRAW FUNCTIONS */
 VAPI vgTexture vgCreateTexture(int w, int h, int linear, int repeat,

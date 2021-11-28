@@ -843,6 +843,13 @@ VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 	glDisable(GL_TEXTURE_2D);
 }
 
+VAPI void vgEditSetData(int width, int height, void* data)
+{
+	esetup();
+
+	glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+}
+
 VAPI void vgEditClear(void)
 {
 	esetup();

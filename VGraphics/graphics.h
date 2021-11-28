@@ -120,8 +120,10 @@ VAPI void vgEditShape(vgShape shape, float x, float y, float r, float s);
 VAPI void vgEditUseTexture(vgTexture tex);
 VAPI void vgEditShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
+VAPI void vgEditSetData(int width, int height, void* data);
 VAPI void vgEditClear(void);
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
+
 
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);

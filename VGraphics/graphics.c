@@ -21,6 +21,7 @@
 *		- Texture editing functions
 *		- Input related functions
 *		- Texture loading and saving functions
+*		- Debug functions
 *
 ******************************************************************************/
 
@@ -993,5 +994,27 @@ VAPI void* vgLoadTextureData(const char* file, int w, int h)
 	fread(buffer, sizeof(unsigned char), w * h * 4, rFile);
 
 	return buffer;
+}
+
+/* DEBUG FUNCTIONS */
+
+VAPI unsigned int _vgDebugGetTextureName(vgTexture texture)
+{
+	return _texBuffer[texture];
+}
+
+VAPI unsigned int _vgDebugGetShapeName(vgShape shape)
+{
+	return _shapeBuffer[shape];
+}
+
+VAPI unsigned int _vgDebugGetFramebuffer(void)
+{
+	return _framebuffer;
+}
+
+VAPI void* _vgDebugGetWindowHandle(void)
+{
+	return _window;
 }
 

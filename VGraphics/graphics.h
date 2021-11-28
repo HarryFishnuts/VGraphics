@@ -19,6 +19,7 @@
 *		- ITex functions
 *		- Texture editing functions
 *		- Input related functions
+*		- Texture loading and saving functions
 * 
 ******************************************************************************/
 
@@ -123,5 +124,10 @@ VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
 VAPI int vgCursorOverlap(int x, int y, int w, int h);
+
+/* TEXTURE LOADING AND SAVING FUNCTIONS */
+VAPI void vgSaveTexture(vgTexture texture, const char* file, int w, int h);
+VAPI vgTexture vgLoadTexture(const char* file, int w, int h, int linear,
+	int repeat);
 
 #endif

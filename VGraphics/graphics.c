@@ -18,12 +18,14 @@
 *		- ITex functions
 *		- Texture editing functions
 *		- Input related functions
+*		- Texture loading and saving functions
 *
 ******************************************************************************/
 
 /* PREPROCESSOR DEFS */
 #define GLEW_STATIC
 #define WIN32_LEAN_AND_MEAN
+#define _CRT_SECURE_NO_WARNINGS
 
 /* INCLUDES */
 #include <stdio.h> /* I/O */
@@ -874,7 +876,6 @@ VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
 
 	*rx = (int)fx;
 	*ry = (int)fy;
-	
 }
 
 VAPI int vgOnLeftClick(void)
@@ -892,5 +893,53 @@ VAPI int vgCursorOverlap(int x, int y, int w, int h)
 	int mx, my;
 	vgGetCursorPosScaled(&mx, &my);
 	return (mx > x && mx < x + w) && (my > y && my < y + h);
+}
+
+/* TEXTURE LOADING AND SAVING FUNCTIONS */
+
+VAPI void vgSaveTexture(vgTexture texture, const char* file, int w, int h)
+{
+	/* create file and open */
+	FILE* output;
+	output = fopen(file, "w");
+	
+	/* get texture data */
+	unsigned char* tData = vgGetTextureData(texture, w, h);
+
+	/* write to file */
+	fwrite(tData, sizeof(unsigned char), w * h * 4, output);
+
+	/* free memory and close file */
+	free(tData);
+	fflush(output); fclose(output);
+}
+
+VAPI vgTexture vgLoadTexture(const char* file, int w, int h, int linear,
+	int repeat)
+{
+	/* allocate data buffer */
+	unsigned char* buffer = calloc(1, w * h * 4);
+	if (buffer == 0) return NULL;
+
+	/* open file and read */
+	FILE* rFile = fopen(file, "r");
+
+	fread(buffer, sizeof(unsigned char), w * h * 4, rFile);
+
+	for (int i = 0; i < w * h * 4; i++)
+	{
+		printf("%d ", buffer[i]);
+	}
+
+	/* create texture, free and close */
+	vgTexture rTex = vgCreateTexture(w, h, linear, repeat, buffer);
+
+	printf("\n rTex: %d", rTex);
+
+	free(buffer);
+	fflush(rFile);
+	fclose(rFile);
+
+	return rTex;
 }
 

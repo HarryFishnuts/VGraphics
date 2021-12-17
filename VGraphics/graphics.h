@@ -100,6 +100,7 @@ VAPI vgShape vgCompileShapeTextured(float* f2d_data, float* t2d_data,
 VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s);
 VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
+VAPI void vgRenderScale(float scale);
 
 /* ITEX FUNCTIONS */
 VAPI void vgITexDataClear(void);

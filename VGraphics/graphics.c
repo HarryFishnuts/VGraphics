@@ -58,6 +58,7 @@ static int _windowWidth;
 static int _windowHeight;
 static int _resW;
 static int _resH;
+static float _rScale;
 
 /* buffer data */
 static GLuint _texBuffer[VG_TEXTURES_MAX] = { 0 };
@@ -94,18 +95,29 @@ static vgTexture _euTex;
 
 static inline void psetup(void)
 {
+	if (_rScale == 0) return; /* avoid a division by 0 */
+
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0, _resW, 0, _resH);
+
+	/* recall that the camera has to cover twice as much rendering space */
+	/* in order to make the rendered "image" twice as small */
+	/* so a 0.5 scale would require a rendering space 2 times larger */
+
+	const float resScaleX = (float)_resW * (1.0f / _rScale);
+	const float resScaleY = (float)_resH * (1.0f / _rScale);
+	const float resOffsetW = resScaleX - (float)_resW;
+	const float resOffsetH = resScaleY - (float)_resH;
+
+	gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
+
+	glViewport(_vpx, _vpy, _vpw, _vph);
+	glColor4ub(_colR, _colG, _colB, _colA);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
-	glViewport(_vpx, _vpy, _vpw, _vph);
-
-	glColor4ub(_colR, _colG, _colB, _colA);
 }
 
 static inline void rsetup(void)
@@ -122,6 +134,7 @@ static inline void rsetup(void)
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	
 }
 
 static inline void esetup(void)
@@ -235,6 +248,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_vpw = resolution_w;
 	_vph = resolution_h;
 
+	_rScale = 1;
+
 	/* init texture editing data */
 	glGenFramebuffers(1, &_eFrameBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, _eFrameBuffer);
@@ -329,27 +344,25 @@ VAPI void vgGetScreenSize(int* width, int* height)
 VAPI void vgClear(void)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
+	glViewport(0, 0, _resW, _resH);
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 VAPI void vgFill(int r, int g, int b)
 {
-	psetup();
-
-	glColor3ub(r, g, b);
-
-	glBegin(GL_QUADS);
-	glVertex2i(0, 0);
-	glVertex2i(0, _resH);
-	glVertex2i(_resW, _resH);
-	glVertex2i(_resW, 0);
-	glEnd();
+	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
+	glViewport(0, 0, _resW, _resH);
+	glClearColor(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 VAPI void vgSwap(void)
 {
 	rsetup();
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -675,6 +688,11 @@ VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	glEnable(GL_TEXTURE_2D);
 	glCallList(_shapeBuffer[shape]);
 	glDisable(GL_TEXTURE_2D);
+}
+
+VAPI void vgRenderScale(float scale)
+{
+	_rScale = scale;
 }
 
 /* ITEX FUNCTIONS */

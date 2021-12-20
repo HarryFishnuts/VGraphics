@@ -59,6 +59,8 @@ static int _windowHeight;
 static int _resW;
 static int _resH;
 static float _rScale;
+static int _useRScale;
+static float _layer;
 
 /* buffer data */
 static GLuint _texBuffer[VG_TEXTURES_MAX] = { 0 };
@@ -95,8 +97,6 @@ static vgTexture _euTex;
 
 static inline void psetup(void)
 {
-	if (_rScale == 0) return; /* avoid a division by 0 */
-
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 
 	glMatrixMode(GL_PROJECTION);
@@ -106,18 +106,26 @@ static inline void psetup(void)
 	/* in order to make the rendered "image" twice as small */
 	/* so a 0.5 scale would require a rendering space 2 times larger */
 
-	const float resScaleX = (float)_resW * (1.0f / _rScale);
-	const float resScaleY = (float)_resH * (1.0f / _rScale);
-	const float resOffsetW = resScaleX - (float)_resW;
-	const float resOffsetH = resScaleY - (float)_resH;
+	if (_useRScale && _rScale != 0)
+	{
+		const float resScaleX = (float)_resW * (1.0f / _rScale);
+		const float resScaleY = (float)_resH * (1.0f / _rScale);
+		const float resOffsetW = resScaleX - (float)_resW;
+		const float resOffsetH = resScaleY - (float)_resH;
 
-	gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
+		gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
+	}
+	else
+	{
+		gluOrtho2D(0, _resW, 0, _resH);
+	}
 
 	glViewport(_vpx, _vpy, _vpw, _vph);
 	glColor4ub(_colR, _colG, _colB, _colA);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	glTranslatef(0, 0, _layer);
 }
 
 static inline void rsetup(void)
@@ -248,7 +256,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_vpw = resolution_w;
 	_vph = resolution_h;
 
-	_rScale = 1;
+	_rScale = 1; _useRScale = 1;
 
 	/* init texture editing data */
 	glGenFramebuffers(1, &_eFrameBuffer);
@@ -360,9 +368,6 @@ VAPI void vgFill(int r, int g, int b)
 VAPI void vgSwap(void)
 {
 	rsetup();
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
 
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -693,6 +698,16 @@ VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 VAPI void vgRenderScale(float scale)
 {
 	_rScale = scale;
+}
+
+VAPI void vgUseRenderScaling(int value) 
+{
+	_useRScale = value;
+}
+
+VAPI void vgRenderLayer(unsigned char layer)
+{
+	_layer = 1.0f - ((float)layer / 255.0f);
 }
 
 /* ITEX FUNCTIONS */
@@ -1041,5 +1056,10 @@ VAPI unsigned int _vgDebugGetFramebuffer(void)
 VAPI void* _vgDebugGetWindowHandle(void)
 {
 	return _window;
+}
+
+VAPI void _vgGiveThreadContextControl(void)
+{
+	glfwMakeContextCurrent(_window);
 }
 

@@ -101,6 +101,8 @@ VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s);
 VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
 VAPI void vgRenderScale(float scale);
+VAPI void vgUseRenderScaling(int value);
+VAPI void vgRenderLayer(unsigned char layer);
 
 /* ITEX FUNCTIONS */
 VAPI void vgITexDataClear(void);
@@ -146,5 +148,6 @@ VAPI unsigned int _vgDebugGetTextureName(vgTexture texture);
 VAPI unsigned int _vgDebugGetShapeName(vgShape shape);
 VAPI unsigned int _vgDebugGetFramebuffer(void);
 VAPI void* _vgDebugGetWindowHandle(void);
+VAPI void _vgGiveThreadContextControl(void);
 
 #endif

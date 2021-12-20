@@ -191,6 +191,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	int resolution_h, int decorated, int resizeable, int linear)
 {
 	_updates = 0;
+	_layer = 1.0f;
 
 	glfwInit();
 	glfwWindowHint(GLFW_DECORATED, decorated);
@@ -665,9 +666,6 @@ VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 {
 	psetup();
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */
 	glScalef(s, s, 1); /* first, scale */
@@ -679,9 +677,6 @@ VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s)
 {
 	psetup();
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */

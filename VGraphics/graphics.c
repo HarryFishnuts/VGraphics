@@ -53,6 +53,7 @@
 static GLFWwindow* _window;
 static GLuint _framebuffer;
 static GLuint _texture;
+static GLuint _depth;
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
 static int _windowHeight;
@@ -118,6 +119,7 @@ static inline void psetup(void)
 	else
 	{
 		gluOrtho2D(0, _resW, 0, _resH);
+		
 	}
 
 	glViewport(_vpx, _vpy, _vpw, _vph);
@@ -235,6 +237,17 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 		break;
 	}
 
+	/* add depth to framebuffer */
+	glGenRenderbuffers(1, &_depth);
+	glBindRenderbuffer(GL_RENDERBUFFER, _depth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, resolution_w,
+		resolution_h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+		GL_RENDERBUFFER, _depth);
+
+	/* enable depth */
+	glEnable(GL_DEPTH_TEST);
+
 	/* connect framebuffer with texture */
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 		_texture, NULL);
@@ -280,6 +293,7 @@ VAPI void vgTerminate(void)
 	glDeleteFramebuffers(1, &_framebuffer);
 	glDeleteFramebuffers(1, &_eFrameBuffer);
 	glDeleteFramebuffers(1, &_rFrameBuffer);
+	glDeleteRenderbuffers(1, &_depth);
 	glDeleteTextures(1, &_texture);
 
 	for (int i = 0; i < VG_TEXTURES_MAX; i++)
@@ -702,7 +716,7 @@ VAPI void vgUseRenderScaling(int value)
 
 VAPI void vgRenderLayer(unsigned char layer)
 {
-	_layer = 1.0f - ((float)layer / 255.0f);
+	_layer = (float)layer / 255.0f;
 }
 
 /* ITEX FUNCTIONS */

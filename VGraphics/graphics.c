@@ -198,6 +198,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	glfwInit();
 	glfwWindowHint(GLFW_DECORATED, decorated);
 	glfwWindowHint(GLFW_RESIZABLE, resizeable);
+	glfwWindowHint(GLFW_SAMPLES, VG_WINDOW_SAMPLES);
 
 	_window = glfwCreateWindow(window_w, window_h, " ", NULL, NULL);
 	glfwSetWindowSizeLimits(_window, VG_WINDOW_SIZE_MIN, VG_WINDOW_SIZE_MIN,
@@ -247,6 +248,9 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	/* enable depth */
 	glEnable(GL_DEPTH_TEST);
+
+	/* enable sampling */
+	glEnable(GL_MULTISAMPLE);
 
 	/* connect framebuffer with texture */
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,

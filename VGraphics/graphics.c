@@ -62,6 +62,9 @@ static int _resH;
 static float _rScale;
 static int _useRScale;
 static float _layer;
+static float _rOffsetX;
+static float _rOffsetY;
+static int _useROffset;
 
 /* buffer data */
 static GLuint _texBuffer[VG_TEXTURES_MAX] = { 0 };
@@ -128,6 +131,11 @@ static inline void psetup(void)
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0, 0, _layer);
+
+	if (_useROffset)
+	{
+		glTranslatef(-_rOffsetX, -_rOffsetY, 0);
+	}
 }
 
 static inline void rsetup(void)
@@ -192,8 +200,6 @@ static inline void resizeCallback(GLFWwindow* win, int w, int h)
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	int resolution_h, int decorated, int resizeable, int linear)
 {
-	puts("VGRAPHICS.DLL INIT BEGIN");
-
 	_updates = 0;
 	_layer = 1.0f;
 
@@ -317,6 +323,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_vph = resolution_h;
 
 	_rScale = 1; _useRScale = 1;
+	_rOffsetX = 0; _rOffsetY = 0; _useROffset = 1;
 
 	/* init texture editing data */
 	glGenFramebuffers(1, &_eFrameBuffer);
@@ -332,8 +339,6 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	/* setup window resize callback */
 	glfwSetWindowSizeCallback(_window, resizeCallback);
-
-	puts("VGRAPHICS.dll INIT COMPLETE");
 }
 
 VAPI void vgTerminate(void)
@@ -770,6 +775,17 @@ VAPI void vgUseRenderScaling(int value)
 	_useRScale = value;
 }
 
+VAPI void vgRenderOffset(float x, float y)
+{
+	_rOffsetX = x;
+	_rOffsetY = y;
+}
+
+VAPI void vgUseRenderOffset(int value)
+{
+	
+}
+
 VAPI void vgRenderLayer(unsigned char layer)
 {
 	_layer = (float)layer / 255.0f;
@@ -1011,13 +1027,20 @@ VAPI void vgGetCursorPosScaled(int* x, int* y)
 	const float resOffsetW = -(resScaleX - (float)_resW); /* leftmost */
 	const float resOffsetH = -(resScaleY - (float)_resH); /* bottommost */
 
-	/* apply some crazy scaling */
-	fx *= 1.0f / _rScale;
+	/* apply some scaling */
+	fx *= 1.0f / _rScale; /* scale by rScale */
 	fy *= 1.0f / _rScale;
-	fx *= 1.0f - (1.0f * (_rScale / 2.0f));
+	fx *= 1.0f - (1.0f * (_rScale / 2.0f)); /* scale to vp + offset */
 	fy *= 1.0f - (1.0f * (_rScale / 2.0f));
-	fx += resOffsetW;
+	fx += resOffsetW; /* offset by vp offset */
 	fy += resOffsetH;
+	
+	/* apply render offset */
+	if (_useROffset)
+	{
+		fx += _rOffsetX;
+		fy += _rOffsetY;
+	}
 
 	*x = (int)fx;
 	*y = (int)fy;

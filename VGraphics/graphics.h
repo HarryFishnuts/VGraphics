@@ -103,6 +103,8 @@ VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s);
 VAPI void vgRenderScale(float scale);
 VAPI void vgUseRenderScaling(int value);
+VAPI void vgRenderOffset(float x, float y);
+VAPI void vgUseRenderOffset(int value);
 VAPI void vgRenderLayer(unsigned char layer);
 
 /* ITEX FUNCTIONS */

@@ -109,10 +109,10 @@ static inline void psetup(void)
 
 	if (_useRScale && _rScale != 0)
 	{
-		const float resScaleX = (float)_resW * (1.0f / _rScale);
-		const float resScaleY = (float)_resH * (1.0f / _rScale);
-		const float resOffsetW = resScaleX - (float)_resW;
-		const float resOffsetH = resScaleY - (float)_resH;
+		const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
+		const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
+		const float resOffsetW = resScaleX - (float)_resW; /* leftmost */
+		const float resOffsetH = resScaleY - (float)_resH; /* bottommost */
 
 		gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
 	}
@@ -192,21 +192,66 @@ static inline void resizeCallback(GLFWwindow* win, int w, int h)
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	int resolution_h, int decorated, int resizeable, int linear)
 {
+	puts("VGRAPHICS.DLL INIT BEGIN");
+
 	_updates = 0;
 	_layer = 1.0f;
 
-	glfwInit();
+	int status = glfwInit();
+
+	/* err checking */
+	if (status == GLFW_FALSE)
+	{
+		MessageBox(NULL, L"GLFW failed to initialize",
+			L"FATAL ERROR", MB_OK);
+		exit(1);
+	}
+	int err = glfwGetError(NULL);
+	if (err != GLFW_NO_ERROR)
+	{
+		wchar_t buff[255];
+		swprintf(buff, 255, L"GLFW ERR: %d", err);
+		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
+		exit(1);
+	}
+
 	glfwWindowHint(GLFW_DECORATED, decorated);
 	glfwWindowHint(GLFW_RESIZABLE, resizeable);
-	glfwWindowHint(GLFW_SAMPLES, VG_WINDOW_SAMPLES);
 
 	_window = glfwCreateWindow(window_w, window_h, " ", NULL, NULL);
+
+	/* window err handling */
+	if (_window == NULL)
+	{
+		int errcode = glfwGetError(NULL);
+		wchar_t buff[255];
+		swprintf(buff, 255, L"Window creation failed!\nGLFW err code: %d", errcode);
+		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
+		exit(1);
+	}
+
 	glfwSetWindowSizeLimits(_window, VG_WINDOW_SIZE_MIN, VG_WINDOW_SIZE_MIN,
 		-1, -1);
 	glfwMakeContextCurrent(_window);
 	glfwSwapInterval(1);
 
-	glewInit();
+	int glewStatus = glewInit();
+	if (glewStatus != GLEW_OK)
+	{
+		MessageBox(NULL, L"Could not locate OpenGL extensions!", L"FATAL ERROR",
+			MB_OK);
+		exit(1);
+	}
+
+	/* check for missing support */
+	if (glBindFramebuffer == NULL)
+	{
+		const wchar_t* msg = L"Your OpenGL does not support Framebuffers\n"
+			L"This is a crucial feature used in VGraphics.dll and cannot"
+			L"be skipped.";
+		MessageBox(NULL, msg, L"FATAL ERROR", MB_OK);
+		exit(1);
+	}
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
@@ -249,9 +294,6 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* enable depth */
 	glEnable(GL_DEPTH_TEST);
 
-	/* enable sampling */
-	glEnable(GL_MULTISAMPLE);
-
 	/* connect framebuffer with texture */
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 		_texture, NULL);
@@ -290,6 +332,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	/* setup window resize callback */
 	glfwSetWindowSizeCallback(_window, resizeCallback);
+
+	puts("VGRAPHICS.dll INIT COMPLETE");
 }
 
 VAPI void vgTerminate(void)
@@ -317,10 +361,18 @@ VAPI void vgTerminate(void)
 
 /* MODULE UPDATE FUNCTIONS */
 
+static long long _lastTick = 0;
 VAPI void vgUpdate(void)
 {
 	glfwPollEvents();
 	_updates++;
+
+	if (GetTickCount64() > _lastTick + 
+		VG_FLUSH_THRESHOLD)
+	{
+		glFlush();
+		_lastTick = GetTickCount64();
+	}
 }
 
 VAPI int vgWindowShouldClose(void)
@@ -343,7 +395,7 @@ VAPI void vgSetWindowSize(int window_w, int window_h)
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwSwapBuffers(_window);
 }
 
@@ -946,14 +998,27 @@ VAPI void vgGetCursorPos(int* x, int* y)
 
 VAPI void vgGetCursorPosScaled(int* x, int* y)
 {
+	/* get mouse coordinates */
 	int mx, my;
+	float fx, fy;
 	vgGetCursorPos(&mx, &my);
+	fx = (float)mx;
+	fy = (float)my;
 
-	float fx = (float)mx, fy = (float)my;
-	float aspectW = (float)_resW / (float)_windowWidth;
-	float aspectH = (float)_resH / (float)_windowHeight;
-	fx *= aspectW;
-	fy *= aspectH;
+	/* get viewport dimensions */
+	const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
+	const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
+	const float resOffsetW = -(resScaleX - (float)_resW); /* leftmost */
+	const float resOffsetH = -(resScaleY - (float)_resH); /* bottommost */
+
+	/* apply some crazy scaling */
+	fx *= 1.0f / _rScale;
+	fy *= 1.0f / _rScale;
+	fx *= 1.0f - (1.0f * (_rScale / 2.0f));
+	fy *= 1.0f - (1.0f * (_rScale / 2.0f));
+	fx += resOffsetW;
+	fy += resOffsetH;
+
 	*x = (int)fx;
 	*y = (int)fy;
 }
@@ -1069,10 +1134,5 @@ VAPI unsigned int _vgDebugGetFramebuffer(void)
 VAPI void* _vgDebugGetWindowHandle(void)
 {
 	return _window;
-}
-
-VAPI void _vgGiveThreadContextControl(void)
-{
-	glfwMakeContextCurrent(_window);
 }
 

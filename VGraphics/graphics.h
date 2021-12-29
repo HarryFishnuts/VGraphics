@@ -43,7 +43,7 @@
 #define VG_WINDOW_SIZE_MIN 500
 #define VG_ITEX_COLORS_MAX 0x10
 #define VG_ITEX_SIZE_MAX 0x40
-#define VG_WINDOW_SAMPLES 2
+#define VG_FLUSH_THRESHOLD 0x100
 
 /* TYPEDEFS */
 typedef unsigned short vgTexture;
@@ -149,6 +149,5 @@ VAPI unsigned int _vgDebugGetTextureName(vgTexture texture);
 VAPI unsigned int _vgDebugGetShapeName(vgShape shape);
 VAPI unsigned int _vgDebugGetFramebuffer(void);
 VAPI void* _vgDebugGetWindowHandle(void);
-VAPI void _vgGiveThreadContextControl(void);
 
 #endif

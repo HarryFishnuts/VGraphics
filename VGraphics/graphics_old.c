@@ -41,7 +41,7 @@
 #include <gl/GLU.h> /* Extened graphics library */
 #include <glfw3.h> /* Window handler library */
 
-#include "graphics.h" /* Header */
+#include "graphics_old.h" /* Header */
 
 /* DEFINITIONS */
 #undef NULL
@@ -1026,12 +1026,14 @@ VAPI void vgGetCursorPosScaled(int* x, int* y)
 	const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
 	const float resOffsetW = -(resScaleX - (float)_resW); /* leftmost */
 	const float resOffsetH = -(resScaleY - (float)_resH); /* bottommost */
+	const float ratioX = _windowWidth / _resW;
+	const float ratioY = _windowHeight / _resH;
 
 	/* apply some scaling */
 	fx *= 1.0f / _rScale; /* scale by rScale */
 	fy *= 1.0f / _rScale;
-	fx *= 1.0f - (1.0f * (_rScale / 2.0f)); /* scale to vp + offset */
-	fy *= 1.0f - (1.0f * (_rScale / 2.0f));
+	fx *= 1.0f - (1.0f * (_rScale / ratioX)); /* scale to vp + offset */
+	fy *= 1.0f - (1.0f * (_rScale / ratioY));
 	fx += resOffsetW; /* offset by vp offset */
 	fy += resOffsetH;
 	

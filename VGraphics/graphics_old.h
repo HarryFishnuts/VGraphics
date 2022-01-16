@@ -1,9 +1,9 @@
 /******************************************************************************
-* <graphics.h>
+* <graphics_old.h>
 * Bailey Jia-Tao Brown
 * 2021
 * 
-*	Header file for primitive graphics library
+*	(Outdated) Header file for primitive graphics library
 *	Contents:
 *		- Header guard
 *		- API definition

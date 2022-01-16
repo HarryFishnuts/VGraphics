@@ -1,9 +1,9 @@
 /******************************************************************************
-* <graphics.c>
+* <graphics_old.c>
 * Bailey Jia-Tao Brown
 * 2021
 *
-*	Source file for primitive graphics library
+*	(Outdated) Source file for primitive graphics library
 *	Contents:
 *		- Preprocessor defs
 *		- Includes

@@ -43,14 +43,13 @@
 
 #include "graphics.h" /* Header */
 
-/* DEFINITIONS */
-#undef NULL
-#define NULL 0
-
 /* ========INTERNAL RESOURCES======== */
 
 /* window and rendering data */
-static GLFWwindow* _window;
+static HWND _window;
+static HDC _deviceContext;
+static HGLRC _glContext;
+
 static GLuint _framebuffer;
 static GLuint _texture;
 static GLuint _depth;
@@ -189,62 +188,93 @@ static inline vgShape findFreeShape(void)
 	}
 }
 
-static inline void resizeCallback(GLFWwindow* win, int w, int h)
+/* WINDOW CALLBACK */
+static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
+	WPARAM wParam, LPARAM lParam)
 {
-	_windowWidth = w;
-	_windowHeight = h;
+	PIXELFORMATDESCRIPTOR pfd = { 0 };
+
+	switch (message)
+	{
+	case WM_CREATE:
+		/* configure pixelformat */
+		pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL |
+			PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.cStencilBits = 16;
+
+		/* get device context */
+		_deviceContext = GetDC(hWnd);
+
+		/* init pixelformat and bind */
+		int formatHandle = ChoosePixelFormat(_deviceContext,
+			&pfd);
+		SetPixelFormat(_deviceContext, formatHandle, &pfd);
+
+		/* create rendering context */
+		_glContext = wglCreateContext(_deviceContext);
+		wglMakeCurrent(_deviceContext, _glContext);
+		break;
+
+	/* on default */
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+	}
+
+	return 0;
 }
 
 /* INIT AND TERMINATE FUNCTIONS */
 
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
-	int resolution_h, int decorated, int resizeable, int linear)
+	int resolution_h, int linear)
 {
+	/* setup update count and layer */
 	_updates = 0;
 	_layer = 1.0f;
 
-	int status = glfwInit();
+	/* create window */
 
-	/* err checking */
-	if (status == GLFW_FALSE)
+	/* setup and register window class */
+	WNDCLASSA wClass = { 0 };
+	wClass.lpfnWndProc = vgWProc;
+	wClass.lpszClassName = "vgWindow";
+	int regResult = RegisterClassA(&wClass);
+
+	/* check if reg failed */
+	if (!regResult)
 	{
-		MessageBox(NULL, L"GLFW failed to initialize",
-			L"FATAL ERROR", MB_OK);
+		char cBuff[0xFF];
+		sprintf(cBuff, "Register Window Class!\nError Code: %d\n",
+			GetLastError());
+		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILURE", MB_OK);
 		exit(1);
 	}
-	int err = glfwGetError(NULL);
-	if (err != GLFW_NO_ERROR)
-	{
-		wchar_t buff[255];
-		swprintf(buff, 255, L"GLFW ERR: %d", err);
-		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
-		exit(1);
-	}
 
-	glfwWindowHint(GLFW_DECORATED, decorated);
-	glfwWindowHint(GLFW_RESIZABLE, resizeable);
-
-	_window = glfwCreateWindow(window_w, window_h, " ", NULL, NULL);
+	/* create window */
+	_window = CreateWindowA(wClass.lpszClassName, " ",
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX, CW_USEDEFAULT,
+		CW_USEDEFAULT, window_w, window_h, 0, 0, NULL, 0);
 
 	/* window err handling */
 	if (_window == NULL)
 	{
-		int errcode = glfwGetError(NULL);
-		wchar_t buff[255];
-		swprintf(buff, 255, L"Window creation failed!\nGLFW err code: %d", errcode);
-		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
+		char cBuff[0xFF];
+		sprintf(cBuff, "Window Creation Failed!\nError Code: %d\n",
+			GetLastError());
+		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILYRE", MB_OK);
 		exit(1);
 	}
-
-	glfwSetWindowSizeLimits(_window, VG_WINDOW_SIZE_MIN, VG_WINDOW_SIZE_MIN,
-		-1, -1);
-	glfwMakeContextCurrent(_window);
-	glfwSwapInterval(1);
 
 	int glewStatus = glewInit();
 	if (glewStatus != GLEW_OK)
 	{
-		MessageBox(NULL, L"Could not locate OpenGL extensions!", L"FATAL ERROR",
+		MessageBoxA(NULL, "Could not locate OpenGL extensions!", "FATAL ERROR",
 			MB_OK);
 		exit(1);
 	}
@@ -252,17 +282,17 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* check for missing support */
 	if (glBindFramebuffer == NULL)
 	{
-		const wchar_t* msg = L"Your OpenGL does not support Framebuffers\n"
-			L"This is a crucial feature used in VGraphics.dll and cannot"
-			L"be skipped.";
-		MessageBox(NULL, msg, L"FATAL ERROR", MB_OK);
+		const char* msg = "Your OpenGL does not support Framebuffers\n"
+			"This is a crucial feature used in VGraphics.dll and cannot"
+			"be skipped.";
+		MessageBoxA(NULL, msg, "FATAL ERROR", MB_OK);
 		exit(1);
 	}
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 	glClear(GL_COLOR_BUFFER_BIT);
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
 
 	/* create framebuffer and texture */
 	glGenFramebuffers(1, &_framebuffer);
@@ -336,9 +366,6 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* setup blend funcs */
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	/* setup window resize callback */
-	glfwSetWindowSizeCallback(_window, resizeCallback);
 }
 
 VAPI void vgTerminate(void)
@@ -360,8 +387,6 @@ VAPI void vgTerminate(void)
 		glDeleteLists(_shapeBuffer[i], 1);
 		_shapeBuffer[i] = NULL;
 	}
-
-	glfwTerminate();
 }
 
 /* MODULE UPDATE FUNCTIONS */
@@ -369,20 +394,19 @@ VAPI void vgTerminate(void)
 static long long _lastTick = 0;
 VAPI void vgUpdate(void)
 {
-	glfwPollEvents();
-	_updates++;
+	/* dispatch messages */
+	MSG messageCheck;
+	PeekMessageA(&messageCheck, NULL, NULL, NULL,
+		PM_REMOVE);
+	DispatchMessageA(&messageCheck);
 
+	/* flush openGL */
 	if (GetTickCount64() > _lastTick + 
 		VG_FLUSH_THRESHOLD)
 	{
 		glFlush();
 		_lastTick = GetTickCount64();
 	}
-}
-
-VAPI int vgWindowShouldClose(void)
-{
-	return glfwWindowShouldClose(_window);
 }
 
 VAPI unsigned long long vgUpdateCount(void)
@@ -394,14 +418,19 @@ VAPI unsigned long long vgUpdateCount(void)
 
 VAPI void vgSetWindowSize(int window_w, int window_h)
 {
-	glfwSetWindowSize(_window, window_w, window_h);
-	_windowWidth = window_w;
-	_windowHeight = window_h;
+	/* get window */
+	RECT wRect;
+	GetWindowRect(_window, &wRect);
+	SetWindowPos(_window,
+		NULL, wRect.left, wRect.top,
+		wRect.left + window_w,
+		wRect.top + window_h,
+		SWP_NOMOVE);
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
 }
 
 VAPI void vgGetResolution(int* w, int* h)
@@ -412,15 +441,15 @@ VAPI void vgGetResolution(int* w, int* h)
 
 VAPI void vgSetWindowTitle(const char* title)
 {
-	glfwSetWindowTitle(_window, title);
+	SetWindowTextA(_window, title);
 }
 
 VAPI void vgGetScreenSize(int* width, int* height)
 {
-	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode* dims = glfwGetVideoMode(monitor);
-	*width = dims->width;
-	*height = dims->height;
+	int screenX = GetSystemMetrics(SM_CXSCREEN);
+	int screenY = GetSystemMetrics(SM_CYSCREEN);
+	*width  = screenX;
+	*height = screenY;
 }
 
 /* CLEAR AND SWAP FUNCTIONS */
@@ -461,7 +490,7 @@ VAPI void vgSwap(void)
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
 }
 
 /* BASIC DRAW FUNCTIONS */
@@ -999,17 +1028,11 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 
 VAPI void vgGetCursorPos(int* x, int* y)
 {
-	double mx = 0;
-	double my = 0;
-
-	glfwGetCursorPos(_window, &mx, &my);
-
-	my -= _windowHeight;
-
-	int cx = (int)mx;
-	int cy = (int)-my;
-	*x = cx;
-	*y = cy;
+	POINT p; /* cursor point */
+	GetCursorPos(&p);
+	ScreenToClient(_window, &p);
+	*x = p.x;
+	*y = -p.y;
 }
 
 VAPI void vgGetCursorPosScaled(int* x, int* y)

@@ -52,7 +52,7 @@ typedef unsigned short vgShape;
 
 /* INIT AND TERMINATE FUNCTIONS */
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
-	int resolution_h, int decorated, int resizeable, int linear);
+	int resolution_h, int linear);
 VAPI void vgTerminate(void);
 
 /* MODULE UPDATE FUNCTIONS */

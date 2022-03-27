@@ -1,9 +1,9 @@
 /******************************************************************************
-* <graphics_old.c>
+* <graphics.c>
 * Bailey Jia-Tao Brown
 * 2021
 *
-*	(Outdated) Source file for primitive graphics library
+*	Source file for primitive graphics library
 *	Contents:
 *		- Preprocessor defs
 *		- Includes
@@ -41,7 +41,7 @@
 #include <gl/GLU.h> /* Extened graphics library */
 #include <glfw3.h> /* Window handler library */
 
-#include "graphics_old.h" /* Header */
+#include "graphics.h" /* Header */
 
 /* DEFINITIONS */
 #undef NULL

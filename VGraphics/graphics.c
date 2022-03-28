@@ -250,9 +250,9 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	RECT clientRect = { 0, 0, window_w, window_h };
 	AdjustWindowRectExForDpi(&clientRect,
 		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
-		WS_THICKFRAME | WS_CAPTION, TRUE,
+		WS_THICKFRAME, TRUE,
 		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
-		WS_THICKFRAME | WS_CAPTION,
+		WS_THICKFRAME,
 		GetDpiForSystem());
 	int winWidth = clientRect.right - clientRect.left;
 	int winHeight = clientRect.bottom - clientRect.top;
@@ -1059,11 +1059,13 @@ VAPI void vgGetCursorPosScaled(float* x, float* y)
 	/* normalize position so that (W,H) maps to (1, 1) */
 	fx /= (float)((float)_windowWidth / 2.0f);
 	fy /= (float)((float)_windowHeight / 2.0f);
+	fy *= -1; /* flip y coord */
 
 	/* scale and transform */
 	if (_useRScale)
 	{
-		
+		fx *= _rScale;
+		fy *= _rScale;
 	}
 	if (_useROffset)
 	{

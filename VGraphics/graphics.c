@@ -39,7 +39,6 @@
 #include <glew.h> /* OpenGL extension library */
 #include <gl/GL.h> /* Graphics library */
 #include <gl/GLU.h> /* Extened graphics library */
-#include <glfw3.h> /* Window handler library */
 
 #include "graphics.h" /* Header */
 
@@ -96,6 +95,9 @@ static int _ecolR, _ecolG, _ecolB, _ecolA = 0;
 static int _eWidth, _eHeight = 0;
 static vgTexture _euTex;
 
+/* windowstate */
+static int _winState = 0;
+
 /* ================================== */
 
 /* INTERNAL HELPER FUNCTIONS */
@@ -110,9 +112,17 @@ static inline void psetup(void)
 	glLoadIdentity();
 
 	/* generic projection */
-	float ratio = _resW / _resH;
-	if (_useRScale)
-		gluOrtho2D(-_rScale, _rScale, -(_rScale * ratio), (_rScale * ratio));
+	float ratio = (float)_windowHeight / (float)_windowWidth;
+	gluOrtho2D(-_rScale, _rScale, -(_rScale * ratio),
+		(double)_rScale * ratio);
+
+	/* reset if not using scaling */
+	if (!_useRScale)
+	{
+		glLoadIdentity();
+		gluOrtho2D(-1.0, 1.0, -ratio, ratio);
+	}
+		
 
 	/* setup viewport and color */
 	glViewport(_vpx, _vpy, _vpw, _vph);
@@ -213,13 +223,19 @@ static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
 		
 		break;
 
+	/* on destroy */
+	case WM_DESTROY:
+		_winState = FALSE;
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+
 	/* on default */
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	}
 
-	return 0;
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 /* INIT AND TERMINATE FUNCTIONS */
@@ -373,10 +389,16 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* setup blend funcs */
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	/* set winstate to true */
+	_winState = TRUE;
 }
 
 VAPI void vgTerminate(void)
 {
+	/* free device context */
+	ReleaseDC(_window, _deviceContext);
+
 	glDeleteFramebuffers(1, &_framebuffer);
 	glDeleteFramebuffers(1, &_eFrameBuffer);
 	glDeleteFramebuffers(1, &_rFrameBuffer);
@@ -433,27 +455,29 @@ VAPI void vgSetWindowSize(int window_w, int window_h)
 		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
 		WS_THICKFRAME,
 		GetDpiForSystem());
+	int winWidth  = tRect.right - tRect.left;
+	int winHeight = tRect.bottom - tRect.top;
 
-	/* get window size and add */
-	RECT wRect;
-	GetWindowRect(_window, &wRect);
-
+	/* set new window pos (NOMOVE) */
 	SetWindowPos(_window,
-		NULL, wRect.left, wRect.top,
-		wRect.left + tRect.right,
-		wRect.top + tRect.top,
+		NULL, 0, 0,
+		winWidth,
+		winHeight,
 		SWP_NOMOVE);
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	SwapBuffers(_deviceContext);
+
+	/* update window dimensions */
+	_windowWidth = window_w;
+	_windowHeight = window_h;
 }
 
 VAPI void vgGetResolution(int* w, int* h)
 {
-	*w = _resW;
-	*h = _resH;
+	*w = _resW; *h = _resH;
 }
 
 VAPI void vgSetWindowTitle(const char* title)
@@ -467,6 +491,11 @@ VAPI void vgGetScreenSize(int* width, int* height)
 	int screenY = GetSystemMetrics(SM_CYSCREEN);
 	*width  = screenX;
 	*height = screenY;
+}
+
+VAPI int vgWindowIsClosed(void)
+{
+	return (!_winState);
 }
 
 /* CLEAR AND SWAP FUNCTIONS */

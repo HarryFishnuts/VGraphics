@@ -53,11 +53,13 @@ static HGLRC _glContext;
 static GLuint _framebuffer;
 static GLuint _texture;
 static GLuint _depth;
+
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
 static int _windowHeight;
 static int _resW;
 static int _resH;
+
 static float _rScale;
 static int _useRScale;
 static float _layer;
@@ -100,41 +102,29 @@ static vgTexture _euTex;
 
 static inline void psetup(void)
 {
+	/* bind to framebuffer */
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 
+	/* set to projection matrix mode */
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	/* recall that the camera has to cover twice as much rendering space */
-	/* in order to make the rendered "image" twice as small */
-	/* so a 0.5 scale would require a rendering space 2 times larger */
+	/* generic projection */
+	float ratio = _resW / _resH;
+	if (_useRScale)
+		gluOrtho2D(-_rScale, _rScale, -(_rScale * ratio), (_rScale * ratio));
 
-	if (_useRScale && _rScale != 0)
-	{
-		const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
-		const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
-		const float resOffsetW = resScaleX - (float)_resW; /* leftmost */
-		const float resOffsetH = resScaleY - (float)_resH; /* bottommost */
-
-		gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
-	}
-	else
-	{
-		gluOrtho2D(0, _resW, 0, _resH);
-		
-	}
-
+	/* setup viewport and color */
 	glViewport(_vpx, _vpy, _vpw, _vph);
 	glColor4ub(_colR, _colG, _colB, _colA);
-
+	
+	/* change to modelview */
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0, 0, _layer);
 
 	if (_useROffset)
-	{
 		glTranslatef(-_rOffsetX, -_rOffsetY, 0);
-	}
 }
 
 static inline void rsetup(void)
@@ -256,10 +246,22 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 		exit(1);
 	}
 
+	/* ensure window size is big enough */
+	RECT clientRect = { 0, 0, window_w, window_h };
+	AdjustWindowRectExForDpi(&clientRect,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME | WS_CAPTION, TRUE,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME | WS_CAPTION,
+		GetDpiForSystem());
+	int winWidth = clientRect.right - clientRect.left;
+	int winHeight = clientRect.bottom - clientRect.top;
+
 	/* create window */
 	_window = CreateWindowA(wClass.lpszClassName, " ",
 		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX, CW_USEDEFAULT,
-		CW_USEDEFAULT, window_w, window_h, 0, 0, NULL, 0);
+		CW_USEDEFAULT, winWidth, winHeight, 0, 0, NULL, 0);
+	EnableNonClientDpiScaling(_window);
 
 	/* window err handling */
 	if (_window == NULL)
@@ -1028,66 +1030,49 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 
 VAPI void vgGetCursorPos(int* x, int* y)
 {
+	/* enable DPI awareness */
+	SetProcessDPIAware( );
+
 	POINT p; /* cursor point */
+
+	/* get cursor position and convert to window pos */
 	GetCursorPos(&p);
 	ScreenToClient(_window, &p);
-	*x = p.x;
-	*y = -p.y;
+	
+	/* set params*/
+	*x = p.x; *y = p.y;
 }
 
-VAPI void vgGetCursorPosScaled(int* x, int* y)
+VAPI void vgGetCursorPosScaled(float* x, float* y)
 {
 	/* get mouse coordinates */
-	int mx, my;
+	int   mx, my;
 	float fx, fy;
 	vgGetCursorPos(&mx, &my);
 	fx = (float)mx;
 	fy = (float)my;
 
-	/* get viewport dimensions */
-	const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
-	const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
-	const float resOffsetW = -(resScaleX - (float)_resW); /* leftmost */
-	const float resOffsetH = -(resScaleY - (float)_resH); /* bottommost */
-	const float ratioX = _windowWidth / _resW;
-	const float ratioY = _windowHeight / _resH;
+	/* first, offset to center so that (W/2, H/2) maps to (0, 0)*/
+	fx -= ((float)_windowWidth  / 2.0f);
+	fy -= ((float)_windowHeight / 2.0f);
 
-	/* apply some scaling */
-	fx *= 1.0f / _rScale; /* scale by rScale */
-	fy *= 1.0f / _rScale;
-	fx *= 1.0f - (1.0f * (_rScale / ratioX)); /* scale to vp + offset */
-	fy *= 1.0f - (1.0f * (_rScale / ratioY));
-	fx += resOffsetW; /* offset by vp offset */
-	fy += resOffsetH;
-	
-	/* apply render offset */
+	/* normalize position so that (W,H) maps to (1, 1) */
+	fx /= (float)((float)_windowWidth / 2.0f);
+	fy /= (float)((float)_windowHeight / 2.0f);
+
+	/* scale and transform */
+	if (_useRScale)
+	{
+		
+	}
 	if (_useROffset)
 	{
 		fx += _rOffsetX;
 		fy += _rOffsetY;
 	}
 
-	*x = (int)fx;
-	*y = (int)fy;
-}
-
-VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
-	int sub_w, int sub_h)
-{
-	int mx, my;
-	float fx, fy;
-	vgGetCursorPosScaled(&mx, &my);
-	fx = (float)mx; fy = (float)my;
-
-	fx -= x;
-	fy -= y;
-	fx /= (float)w;
-	fy /= (float)h;
-	fx *= sub_w;
-	fy *= sub_h;
-
-	*rx = (int)fx;
-	*ry = (int)fy;
+	/* convert back to int and return */
+	*x = fx; *y = fy;
 }
 
 VAPI int vgOnLeftClick(void)

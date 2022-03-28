@@ -57,7 +57,6 @@ VAPI void vgTerminate(void);
 
 /* MODULE UPDATE FUNCTIONS */
 VAPI void vgUpdate(void);
-VAPI int vgWindowShouldClose(void);
 VAPI unsigned long long vgUpdateCount(void);
 
 /* MISC RENDERING FUNCTIONS */
@@ -134,9 +133,7 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);
-VAPI void vgGetCursorPosScaled(int* x, int* y);
-VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
-	int sub_w, int sub_h);
+VAPI void vgGetCursorPosScaled(float* x, float* y);
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
 VAPI int vgCursorOverlap(int x, int y, int w, int h);

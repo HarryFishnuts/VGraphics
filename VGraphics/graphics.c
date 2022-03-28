@@ -208,6 +208,9 @@ static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
 		/* create rendering context */
 		_glContext = wglCreateContext(_deviceContext);
 		wglMakeCurrent(_deviceContext, _glContext);
+
+		/* set size properly */
+		
 		break;
 
 	/* on default */
@@ -227,6 +230,9 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* setup update count and layer */
 	_updates = 0;
 	_layer = 1.0f;
+
+	/* enable DPI awareness */
+	SetProcessDPIAware();
 
 	/* create window */
 
@@ -261,7 +267,6 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_window = CreateWindowA(wClass.lpszClassName, " ",
 		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX, CW_USEDEFAULT,
 		CW_USEDEFAULT, winWidth, winHeight, 0, 0, NULL, 0);
-	EnableNonClientDpiScaling(_window);
 
 	/* window err handling */
 	if (_window == NULL)
@@ -269,7 +274,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 		char cBuff[0xFF];
 		sprintf(cBuff, "Window Creation Failed!\nError Code: %d\n",
 			GetLastError());
-		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILYRE", MB_OK);
+		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILURE", MB_OK);
 		exit(1);
 	}
 
@@ -420,13 +425,23 @@ VAPI unsigned long long vgUpdateCount(void)
 
 VAPI void vgSetWindowSize(int window_w, int window_h)
 {
-	/* get window */
+	/* calculate target rect */
+	RECT tRect = { 0, 0, window_w, window_h };
+	AdjustWindowRectExForDpi(&tRect,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME, TRUE,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME,
+		GetDpiForSystem());
+
+	/* get window size and add */
 	RECT wRect;
 	GetWindowRect(_window, &wRect);
+
 	SetWindowPos(_window,
 		NULL, wRect.left, wRect.top,
-		wRect.left + window_w,
-		wRect.top + window_h,
+		wRect.left + tRect.right,
+		wRect.top + tRect.top,
 		SWP_NOMOVE);
 
 	/* clear and swap to remove artifacts */
@@ -1030,9 +1045,6 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 
 VAPI void vgGetCursorPos(int* x, int* y)
 {
-	/* enable DPI awareness */
-	SetProcessDPIAware( );
-
 	POINT p; /* cursor point */
 
 	/* get cursor position and convert to window pos */

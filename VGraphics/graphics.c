@@ -1087,9 +1087,9 @@ VAPI int vgOnRightClick(void)
 	return -(GetKeyState(VK_RBUTTON) >> 15);
 }
 
-VAPI int vgCursorOverlap(int x, int y, int w, int h)
+VAPI int vgCursorOverlap(float x, float y, float w, float h)
 {
-	int mx, my;
+	float mx, my;
 	vgGetCursorPosScaled(&mx, &my);
 	return (mx > x && mx < x + w) && (my > y && my < y + h);
 }

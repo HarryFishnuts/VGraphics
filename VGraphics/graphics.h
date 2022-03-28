@@ -130,13 +130,12 @@ VAPI void vgEditSetData(int width, int height, void* data);
 VAPI void vgEditClear(void);
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
-
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);
 VAPI void vgGetCursorPosScaled(float* x, float* y);
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
-VAPI int vgCursorOverlap(int x, int y, int w, int h);
+VAPI int vgCursorOverlap(float x, float y, float w, float h);
 
 /* TEXTURE LOADING AND SAVING FUNCTIONS */
 VAPI void vgSaveTexture(vgTexture texture, const char* file, int w, int h);

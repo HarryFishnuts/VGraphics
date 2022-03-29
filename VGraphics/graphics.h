@@ -44,7 +44,8 @@
 #define VG_WINDOW_SIZE_MIN 500
 #define VG_ITEX_COLORS_MAX 0x10
 #define VG_ITEX_SIZE_MAX 0x40
-#define VG_FLUSH_THRESHOLD 0x100
+#define VG_FLUSH_THRESHOLD 0x800
+#define VG_SWAP_TIME_MIN 0x01
 
 /* TYPEDEFS */
 typedef unsigned short vgTexture;

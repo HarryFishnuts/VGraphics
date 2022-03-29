@@ -516,8 +516,15 @@ VAPI void vgFill(int r, int g, int b)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+static ULONGLONG __lastSwap = 0;
 VAPI void vgSwap(void)
 {
+	/* limit swap time */
+	ULONGLONG currentTime = GetTickCount64();
+	if (currentTime - __lastSwap <
+		VG_SWAP_TIME_MIN) return;
+	__lastSwap = currentTime;
+
 	rsetup();
 
 	glClearColor(0, 0, 0, 1);

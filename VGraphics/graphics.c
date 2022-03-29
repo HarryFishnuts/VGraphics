@@ -42,6 +42,9 @@
 
 #include "graphics.h" /* Header */
 
+/* DEFINITIONS */
+#define FRAMESKIP(use) if (_frameSkip && use) return
+
 /* ========INTERNAL RESOURCES======== */
 
 /* window and rendering data */
@@ -54,6 +57,8 @@ static GLuint _texture;
 static GLuint _depth;
 
 static unsigned int _swapTime;
+static unsigned int _frameSkip;
+static unsigned int _useFrameSkip;
 
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
@@ -249,6 +254,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_updates = 0;
 	_layer = 1.0f;
 	_swapTime = VG_SWAP_TIME_MIN;
+	_frameSkip = FALSE;
+	_useFrameSkip = TRUE;
 
 	/* enable DPI awareness */
 	SetProcessDPIAware();
@@ -510,10 +517,23 @@ VAPI void vgSetSwapTime(int swapTime)
 	_swapTime = swapTime;
 }
 
+VAPI void vgUseFrameSkip(int state)
+{
+	if (state < 0) state = 0;
+	_useFrameSkip = state;
+}
+
+VAPI int vgGetFrameSkipState(void)
+{
+	return _frameSkip;
+}
+
 /* CLEAR AND SWAP FUNCTIONS */
 
 VAPI void vgClear(void)
 {
+	FRAMESKIP(_useFrameSkip);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 	glViewport(0, 0, _resW, _resH);
 	glClearColor(0, 0, 0, 1);
@@ -533,8 +553,15 @@ VAPI void vgSwap(void)
 {
 	/* limit swap time */
 	ULONGLONG currentTime = GetTickCount64();
-	if (currentTime - __lastSwap <
-		_swapTime) return;
+	if ((currentTime - __lastSwap) < _swapTime)
+	{
+		/* mark frame skip */
+		_frameSkip = TRUE;
+		return;
+	}
+
+	/* no frame skip */
+	_frameSkip = FALSE;
 	__lastSwap = currentTime;
 
 	/* perform swap */
@@ -579,6 +606,7 @@ VAPI void vgColor4(int r, int g, int b, int a)
 
 VAPI void vgRect(int x, int y, int w, int h)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glBegin(GL_QUADS);
@@ -596,6 +624,7 @@ VAPI void vgLineSize(float size)
 
 VAPI void vgLine(int x1, int y1, int x2, int y2)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glLineWidth(_lineW);
@@ -613,6 +642,7 @@ VAPI void vgPointSize(float size)
 
 VAPI void vgPoint(int x, int y)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glPointSize(_pointW);
@@ -642,6 +672,7 @@ VAPI void vgViewportReset(void)
 
 VAPI void vgRectf(float x, float y, float w, float h)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glBegin(GL_QUADS);
@@ -654,6 +685,7 @@ VAPI void vgRectf(float x, float y, float w, float h)
 
 VAPI void vgLinef(float x1, float y1, float x2, float y2)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glLineWidth(_lineW);
@@ -666,6 +698,7 @@ VAPI void vgLinef(float x1, float y1, float x2, float y2)
 
 VAPI void vgPointf(float x, float y)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glPointSize(_pointW);
@@ -758,6 +791,7 @@ VAPI void vgTextureFilterReset(void)
 
 VAPI void vgRectTexture(int x, int y, int w, int h)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
@@ -777,6 +811,7 @@ VAPI void vgRectTexture(int x, int y, int w, int h)
 
 VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
@@ -834,6 +869,7 @@ VAPI vgShape vgCompileShapeTextured(float* f2d_data, float* t2d_data,
 
 VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
@@ -846,6 +882,7 @@ VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s)
 {
+	FRAMESKIP(_useFrameSkip);
 	psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */

@@ -66,6 +66,7 @@ VAPI void vgGetResolution(int* w, int* h);
 VAPI void vgSetWindowTitle(const char* title);
 VAPI void vgGetScreenSize(int* width, int* height);
 VAPI int  vgWindowIsClosed(void);
+VAPI void vgSetSwapTime(int swapTime);
 
 /* CLEAR AND SWAP FUNCTIONS */
 VAPI void vgClear(void);

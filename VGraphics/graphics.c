@@ -53,6 +53,8 @@ static GLuint _framebuffer;
 static GLuint _texture;
 static GLuint _depth;
 
+static unsigned int _swapTime;
+
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
 static int _windowHeight;
@@ -246,6 +248,7 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* setup update count and layer */
 	_updates = 0;
 	_layer = 1.0f;
+	_swapTime = VG_SWAP_TIME_MIN;
 
 	/* enable DPI awareness */
 	SetProcessDPIAware();
@@ -498,6 +501,15 @@ VAPI int vgWindowIsClosed(void)
 	return (!_winState);
 }
 
+VAPI void vgSetSwapTime(int swapTime)
+{
+	/* check for bad state */
+	if (swapTime < VG_SWAP_TIME_MIN) return;
+
+	/* set new swaptime */
+	_swapTime = swapTime;
+}
+
 /* CLEAR AND SWAP FUNCTIONS */
 
 VAPI void vgClear(void)
@@ -522,11 +534,12 @@ VAPI void vgSwap(void)
 	/* limit swap time */
 	ULONGLONG currentTime = GetTickCount64();
 	if (currentTime - __lastSwap <
-		VG_SWAP_TIME_MIN) return;
+		_swapTime) return;
 	__lastSwap = currentTime;
 
+	/* perform swap */
 	rsetup();
-
+	
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

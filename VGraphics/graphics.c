@@ -524,7 +524,7 @@ VAPI void vgUseRenderSkip(int state)
 
 VAPI int vgGetRenderSkipState(void)
 {
-	return _renderSkip;
+	return _renderSkip && _useRenderSkip;
 }
 
 /* CLEAR AND SWAP FUNCTIONS */

@@ -1,10 +1,11 @@
 /******************************************************************************
 * <graphics.h>
 * Bailey Jia-Tao Brown
-* 2021
+* 2021	
 * 
 *	Header file for primitive graphics library
 *	Contents:
+*		- Deprecation check
 *		- Header guard
 *		- API definition
 *		- Definitions
@@ -43,7 +44,8 @@
 #define VG_WINDOW_SIZE_MIN 500
 #define VG_ITEX_COLORS_MAX 0x10
 #define VG_ITEX_SIZE_MAX 0x40
-#define VG_FLUSH_THRESHOLD 0x100
+#define VG_FLUSH_THRESHOLD 0x800
+#define VG_SWAP_TIME_MIN 0x01
 
 /* TYPEDEFS */
 typedef unsigned short vgTexture;
@@ -51,12 +53,11 @@ typedef unsigned short vgShape;
 
 /* INIT AND TERMINATE FUNCTIONS */
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
-	int resolution_h, int decorated, int resizeable, int linear);
+	int resolution_h, int linear);
 VAPI void vgTerminate(void);
 
 /* MODULE UPDATE FUNCTIONS */
 VAPI void vgUpdate(void);
-VAPI int vgWindowShouldClose(void);
 VAPI unsigned long long vgUpdateCount(void);
 
 /* MISC RENDERING FUNCTIONS */
@@ -64,6 +65,10 @@ VAPI void vgSetWindowSize(int window_w, int window_h);
 VAPI void vgGetResolution(int* w, int* h);
 VAPI void vgSetWindowTitle(const char* title);
 VAPI void vgGetScreenSize(int* width, int* height);
+VAPI int  vgWindowIsClosed(void);
+VAPI void vgSetSwapTime(int swapTime);
+VAPI void vgUseRenderSkip(int state);
+VAPI int  vgGetRenderSkipState(void);
 
 /* CLEAR AND SWAP FUNCTIONS */
 VAPI void vgClear(void);
@@ -130,15 +135,12 @@ VAPI void vgEditSetData(int width, int height, void* data);
 VAPI void vgEditClear(void);
 VAPI void* vgGetTextureData(vgTexture tex, int w, int h);
 
-
 /* CURSOR RELATED FUNCTIONS */
 VAPI void vgGetCursorPos(int* x, int* y);
-VAPI void vgGetCursorPosScaled(int* x, int* y);
-VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
-	int sub_w, int sub_h);
+VAPI void vgGetCursorPosScaled(float* x, float* y);
 VAPI int vgOnLeftClick(void);
 VAPI int vgOnRightClick(void);
-VAPI int vgCursorOverlap(int x, int y, int w, int h);
+VAPI int vgCursorOverlap(float x, float y, float w, float h);
 
 /* TEXTURE LOADING AND SAVING FUNCTIONS */
 VAPI void vgSaveTexture(vgTexture texture, const char* file, int w, int h);

@@ -39,26 +39,33 @@
 #include <glew.h> /* OpenGL extension library */
 #include <gl/GL.h> /* Graphics library */
 #include <gl/GLU.h> /* Extened graphics library */
-#include <glfw3.h> /* Window handler library */
 
 #include "graphics.h" /* Header */
 
 /* DEFINITIONS */
-#undef NULL
-#define NULL 0
+#define RENDERSKIP(and) if (_renderSkip && and) return
 
 /* ========INTERNAL RESOURCES======== */
 
 /* window and rendering data */
-static GLFWwindow* _window;
+static HWND _window;
+static HDC _deviceContext;
+static HGLRC _glContext;
+
 static GLuint _framebuffer;
 static GLuint _texture;
 static GLuint _depth;
+
+static int _swapTime;
+static int _renderSkip;
+static int _useRenderSkip;
+
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
 static int _windowHeight;
 static int _resW;
 static int _resH;
+
 static float _rScale;
 static int _useRScale;
 static float _layer;
@@ -95,47 +102,46 @@ static int _ecolR, _ecolG, _ecolB, _ecolA = 0;
 static int _eWidth, _eHeight = 0;
 static vgTexture _euTex;
 
+/* windowstate */
+static int _winState = 0;
+
 /* ================================== */
 
 /* INTERNAL HELPER FUNCTIONS */
 
 static inline void psetup(void)
 {
+	/* bind to framebuffer */
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 
+	/* set to projection matrix mode */
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	/* recall that the camera has to cover twice as much rendering space */
-	/* in order to make the rendered "image" twice as small */
-	/* so a 0.5 scale would require a rendering space 2 times larger */
+	/* generic projection */
+	float ratio = (float)_windowHeight / (float)_windowWidth;
+	gluOrtho2D(-_rScale, _rScale, -(_rScale * ratio),
+		(double)_rScale * ratio);
 
-	if (_useRScale && _rScale != 0)
+	/* reset if not using scaling */
+	if (!_useRScale)
 	{
-		const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
-		const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
-		const float resOffsetW = resScaleX - (float)_resW; /* leftmost */
-		const float resOffsetH = resScaleY - (float)_resH; /* bottommost */
-
-		gluOrtho2D(-resOffsetW, resScaleX, -resOffsetH, resScaleY);
+		glLoadIdentity();
+		gluOrtho2D(-1.0, 1.0, -ratio, ratio);
 	}
-	else
-	{
-		gluOrtho2D(0, _resW, 0, _resH);
 		
-	}
 
+	/* setup viewport and color */
 	glViewport(_vpx, _vpy, _vpw, _vph);
 	glColor4ub(_colR, _colG, _colB, _colA);
-
+	
+	/* change to modelview */
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0, 0, _layer);
 
 	if (_useROffset)
-	{
 		glTranslatef(-_rOffsetX, -_rOffsetY, 0);
-	}
 }
 
 static inline void rsetup(void)
@@ -189,62 +195,119 @@ static inline vgShape findFreeShape(void)
 	}
 }
 
-static inline void resizeCallback(GLFWwindow* win, int w, int h)
+/* WINDOW CALLBACK */
+static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
+	WPARAM wParam, LPARAM lParam)
 {
-	_windowWidth = w;
-	_windowHeight = h;
+	PIXELFORMATDESCRIPTOR pfd = { 0 };
+
+	switch (message)
+	{
+	case WM_CREATE:
+		/* configure pixelformat */
+		pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL |
+			PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.cStencilBits = 16;
+
+		/* get device context */
+		_deviceContext = GetDC(hWnd);
+
+		/* init pixelformat and bind */
+		int formatHandle = ChoosePixelFormat(_deviceContext,
+			&pfd);
+		SetPixelFormat(_deviceContext, formatHandle, &pfd);
+
+		/* create rendering context */
+		_glContext = wglCreateContext(_deviceContext);
+		wglMakeCurrent(_deviceContext, _glContext);
+
+		/* set size properly */
+		
+		break;
+
+	/* on destroy */
+	case WM_DESTROY:
+		_winState = FALSE;
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+
+	/* on default */
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+	}
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 /* INIT AND TERMINATE FUNCTIONS */
 
 VAPI void vgInit(int window_w, int window_h, int resolution_w,
-	int resolution_h, int decorated, int resizeable, int linear)
+	int resolution_h, int linear)
 {
+	/* setup update count and layer */
 	_updates = 0;
 	_layer = 1.0f;
+	_swapTime = VG_SWAP_TIME_MIN;
+	_renderSkip = FALSE;
+	_useRenderSkip = TRUE;
 
-	int status = glfwInit();
+	/* enable DPI awareness */
+	SetProcessDPIAware();
 
-	/* err checking */
-	if (status == GLFW_FALSE)
+	/* create window */
+
+	/* setup and register window class */
+	WNDCLASSA wClass = { 0 };
+	wClass.lpfnWndProc = vgWProc;
+	wClass.lpszClassName = "vgWindow";
+	int regResult = RegisterClassA(&wClass);
+
+	/* check if reg failed */
+	if (!regResult)
 	{
-		MessageBox(NULL, L"GLFW failed to initialize",
-			L"FATAL ERROR", MB_OK);
+		char cBuff[0xFF];
+		sprintf(cBuff, "Register Window Class!\nError Code: %d\n",
+			GetLastError());
+		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILURE", MB_OK);
 		exit(1);
 	}
-	int err = glfwGetError(NULL);
-	if (err != GLFW_NO_ERROR)
-	{
-		wchar_t buff[255];
-		swprintf(buff, 255, L"GLFW ERR: %d", err);
-		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
-		exit(1);
-	}
 
-	glfwWindowHint(GLFW_DECORATED, decorated);
-	glfwWindowHint(GLFW_RESIZABLE, resizeable);
+	/* ensure window size is big enough */
+	RECT clientRect = { 0, 0, window_w, window_h };
+	AdjustWindowRectExForDpi(&clientRect,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME, TRUE,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME,
+		GetDpiForSystem());
+	int winWidth = clientRect.right - clientRect.left;
+	int winHeight = clientRect.bottom - clientRect.top;
 
-	_window = glfwCreateWindow(window_w, window_h, " ", NULL, NULL);
+	/* create window */
+	_window = CreateWindowA(wClass.lpszClassName, " ",
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX, CW_USEDEFAULT,
+		CW_USEDEFAULT, winWidth, winHeight, 0, 0, NULL, 0);
 
 	/* window err handling */
 	if (_window == NULL)
 	{
-		int errcode = glfwGetError(NULL);
-		wchar_t buff[255];
-		swprintf(buff, 255, L"Window creation failed!\nGLFW err code: %d", errcode);
-		MessageBox(NULL, buff, L"FATAL ERROR", MB_OK);
+		char cBuff[0xFF];
+		sprintf(cBuff, "Window Creation Failed!\nError Code: %d\n",
+			GetLastError());
+		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILURE", MB_OK);
 		exit(1);
 	}
-
-	glfwSetWindowSizeLimits(_window, VG_WINDOW_SIZE_MIN, VG_WINDOW_SIZE_MIN,
-		-1, -1);
-	glfwMakeContextCurrent(_window);
-	glfwSwapInterval(1);
 
 	int glewStatus = glewInit();
 	if (glewStatus != GLEW_OK)
 	{
-		MessageBox(NULL, L"Could not locate OpenGL extensions!", L"FATAL ERROR",
+		MessageBoxA(NULL, "Could not locate OpenGL extensions!", "FATAL ERROR",
 			MB_OK);
 		exit(1);
 	}
@@ -252,17 +315,17 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	/* check for missing support */
 	if (glBindFramebuffer == NULL)
 	{
-		const wchar_t* msg = L"Your OpenGL does not support Framebuffers\n"
-			L"This is a crucial feature used in VGraphics.dll and cannot"
-			L"be skipped.";
-		MessageBox(NULL, msg, L"FATAL ERROR", MB_OK);
+		const char* msg = "Your OpenGL does not support Framebuffers\n"
+			"This is a crucial feature used in VGraphics.dll and cannot"
+			"be skipped.";
+		MessageBoxA(NULL, msg, "FATAL ERROR", MB_OK);
 		exit(1);
 	}
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 	glClear(GL_COLOR_BUFFER_BIT);
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
 
 	/* create framebuffer and texture */
 	glGenFramebuffers(1, &_framebuffer);
@@ -337,12 +400,15 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	/* setup window resize callback */
-	glfwSetWindowSizeCallback(_window, resizeCallback);
+	/* set winstate to true */
+	_winState = TRUE;
 }
 
 VAPI void vgTerminate(void)
 {
+	/* free device context */
+	ReleaseDC(_window, _deviceContext);
+
 	glDeleteFramebuffers(1, &_framebuffer);
 	glDeleteFramebuffers(1, &_eFrameBuffer);
 	glDeleteFramebuffers(1, &_rFrameBuffer);
@@ -360,8 +426,6 @@ VAPI void vgTerminate(void)
 		glDeleteLists(_shapeBuffer[i], 1);
 		_shapeBuffer[i] = NULL;
 	}
-
-	glfwTerminate();
 }
 
 /* MODULE UPDATE FUNCTIONS */
@@ -369,20 +433,19 @@ VAPI void vgTerminate(void)
 static long long _lastTick = 0;
 VAPI void vgUpdate(void)
 {
-	glfwPollEvents();
-	_updates++;
+	/* dispatch messages */
+	MSG messageCheck;
+	PeekMessageA(&messageCheck, NULL, NULL, NULL,
+		PM_REMOVE);
+	DispatchMessageA(&messageCheck);
 
+	/* flush openGL */
 	if (GetTickCount64() > _lastTick + 
 		VG_FLUSH_THRESHOLD)
 	{
 		glFlush();
 		_lastTick = GetTickCount64();
 	}
-}
-
-VAPI int vgWindowShouldClose(void)
-{
-	return glfwWindowShouldClose(_window);
 }
 
 VAPI unsigned long long vgUpdateCount(void)
@@ -394,39 +457,82 @@ VAPI unsigned long long vgUpdateCount(void)
 
 VAPI void vgSetWindowSize(int window_w, int window_h)
 {
-	glfwSetWindowSize(_window, window_w, window_h);
-	_windowWidth = window_w;
-	_windowHeight = window_h;
+	/* calculate target rect */
+	RECT tRect = { 0, 0, window_w, window_h };
+	AdjustWindowRectExForDpi(&tRect,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME, TRUE,
+		WS_VISIBLE | WS_SYSMENU | WS_MAXIMIZEBOX |
+		WS_THICKFRAME,
+		GetDpiForSystem());
+	int winWidth  = tRect.right - tRect.left;
+	int winHeight = tRect.bottom - tRect.top;
+
+	/* set new window pos (NOMOVE) */
+	SetWindowPos(_window,
+		NULL, 0, 0,
+		winWidth,
+		winHeight,
+		SWP_NOMOVE);
 
 	/* clear and swap to remove artifacts */
 	glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
+
+	/* update window dimensions */
+	_windowWidth = window_w;
+	_windowHeight = window_h;
 }
 
 VAPI void vgGetResolution(int* w, int* h)
 {
-	*w = _resW;
-	*h = _resH;
+	*w = _resW; *h = _resH;
 }
 
 VAPI void vgSetWindowTitle(const char* title)
 {
-	glfwSetWindowTitle(_window, title);
+	SetWindowTextA(_window, title);
 }
 
 VAPI void vgGetScreenSize(int* width, int* height)
 {
-	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode* dims = glfwGetVideoMode(monitor);
-	*width = dims->width;
-	*height = dims->height;
+	int screenX = GetSystemMetrics(SM_CXSCREEN);
+	int screenY = GetSystemMetrics(SM_CYSCREEN);
+	*width  = screenX;
+	*height = screenY;
+}
+
+VAPI int vgWindowIsClosed(void)
+{
+	return (!_winState);
+}
+
+VAPI void vgSetSwapTime(int swapTime)
+{
+	/* check for bad state */
+	if (swapTime < VG_SWAP_TIME_MIN) return;
+
+	/* set new swaptime */
+	_swapTime = swapTime;
+}
+
+VAPI void vgUseRenderSkip(int state)
+{
+	_useRenderSkip = state;
+}
+
+VAPI int vgGetRenderSkipState(void)
+{
+	return _renderSkip && _useRenderSkip;
 }
 
 /* CLEAR AND SWAP FUNCTIONS */
 
 VAPI void vgClear(void)
 {
+	RENDERSKIP(_useRenderSkip);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 	glViewport(0, 0, _resW, _resH);
 	glClearColor(0, 0, 0, 1);
@@ -435,16 +541,31 @@ VAPI void vgClear(void)
 
 VAPI void vgFill(int r, int g, int b)
 {
+	RENDERSKIP(_useRenderSkip);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 	glViewport(0, 0, _resW, _resH);
 	glClearColor(r / 255.0f, g / 255.0f, b / 255.0f, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+static ULONGLONG __lastSwap = 0;
 VAPI void vgSwap(void)
 {
-	rsetup();
+	/* limit swap time */
+	ULONGLONG currentTime = GetTickCount64();
+	if ((currentTime - __lastSwap) < _swapTime)
+	{
+		_renderSkip = TRUE;
+		return;
+	}
 
+	__lastSwap  = currentTime;
+	_renderSkip = FALSE;
+
+	/* perform swap */
+	rsetup();
+	
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -461,7 +582,7 @@ VAPI void vgSwap(void)
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
-	glfwSwapBuffers(_window);
+	SwapBuffers(_deviceContext);
 }
 
 /* BASIC DRAW FUNCTIONS */
@@ -484,7 +605,7 @@ VAPI void vgColor4(int r, int g, int b, int a)
 
 VAPI void vgRect(int x, int y, int w, int h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBegin(GL_QUADS);
 	glVertex2i(x, y);
@@ -501,7 +622,7 @@ VAPI void vgLineSize(float size)
 
 VAPI void vgLine(int x1, int y1, int x2, int y2)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glLineWidth(_lineW);
 
@@ -518,7 +639,7 @@ VAPI void vgPointSize(float size)
 
 VAPI void vgPoint(int x, int y)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glPointSize(_pointW);
 	
@@ -547,7 +668,7 @@ VAPI void vgViewportReset(void)
 
 VAPI void vgRectf(float x, float y, float w, float h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBegin(GL_QUADS);
 	glVertex2f(x, y);
@@ -559,7 +680,7 @@ VAPI void vgRectf(float x, float y, float w, float h)
 
 VAPI void vgLinef(float x1, float y1, float x2, float y2)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glLineWidth(_lineW);
 
@@ -571,7 +692,7 @@ VAPI void vgLinef(float x1, float y1, float x2, float y2)
 
 VAPI void vgPointf(float x, float y)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glPointSize(_pointW);
 
@@ -663,7 +784,7 @@ VAPI void vgTextureFilterReset(void)
 
 VAPI void vgRectTexture(int x, int y, int w, int h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
 	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
@@ -682,7 +803,7 @@ VAPI void vgRectTexture(int x, int y, int w, int h)
 
 VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
 	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
@@ -739,7 +860,7 @@ VAPI vgShape vgCompileShapeTextured(float* f2d_data, float* t2d_data,
 
 VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */
@@ -751,7 +872,7 @@ VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */
@@ -999,70 +1120,48 @@ VAPI void* vgGetTextureData(vgTexture tex, int w, int h)
 
 VAPI void vgGetCursorPos(int* x, int* y)
 {
-	double mx = 0;
-	double my = 0;
+	POINT p; /* cursor point */
 
-	glfwGetCursorPos(_window, &mx, &my);
-
-	my -= _windowHeight;
-
-	int cx = (int)mx;
-	int cy = (int)-my;
-	*x = cx;
-	*y = cy;
+	/* get cursor position and convert to window pos */
+	GetCursorPos(&p);
+	ScreenToClient(_window, &p);
+	
+	/* set params*/
+	*x = p.x; *y = p.y;
 }
 
-VAPI void vgGetCursorPosScaled(int* x, int* y)
+VAPI void vgGetCursorPosScaled(float* x, float* y)
 {
 	/* get mouse coordinates */
-	int mx, my;
+	int   mx, my;
 	float fx, fy;
 	vgGetCursorPos(&mx, &my);
 	fx = (float)mx;
 	fy = (float)my;
 
-	/* get viewport dimensions */
-	const float resScaleX = (float)_resW * (1.0f / _rScale); /* rightmost */
-	const float resScaleY = (float)_resH * (1.0f / _rScale); /* topmost */
-	const float resOffsetW = -(resScaleX - (float)_resW); /* leftmost */
-	const float resOffsetH = -(resScaleY - (float)_resH); /* bottommost */
+	/* first, offset to center so that (W/2, H/2) maps to (0, 0)*/
+	fx -= ((float)_windowWidth  / 2.0f);
+	fy -= ((float)_windowHeight / 2.0f);
 
-	/* apply some scaling */
-	fx *= 1.0f / _rScale; /* scale by rScale */
-	fy *= 1.0f / _rScale;
-	fx *= 1.0f - (1.0f * (_rScale / 2.0f)); /* scale to vp + offset */
-	fy *= 1.0f - (1.0f * (_rScale / 2.0f));
-	fx += resOffsetW; /* offset by vp offset */
-	fy += resOffsetH;
-	
-	/* apply render offset */
+	/* normalize position so that (W,H) maps to (1, 1) */
+	fx /= (float)((float)_windowWidth / 2.0f);
+	fy /= (float)((float)_windowHeight / 2.0f);
+	fy *= -1; /* flip y coord */
+
+	/* scale and transform */
+	if (_useRScale)
+	{
+		fx *= _rScale;
+		fy *= _rScale;
+	}
 	if (_useROffset)
 	{
 		fx += _rOffsetX;
 		fy += _rOffsetY;
 	}
 
-	*x = (int)fx;
-	*y = (int)fy;
-}
-
-VAPI void vgGetCursorPosScaledT(int* rx, int* ry, int x, int y, int w, int h,
-	int sub_w, int sub_h)
-{
-	int mx, my;
-	float fx, fy;
-	vgGetCursorPosScaled(&mx, &my);
-	fx = (float)mx; fy = (float)my;
-
-	fx -= x;
-	fy -= y;
-	fx /= (float)w;
-	fy /= (float)h;
-	fx *= sub_w;
-	fy *= sub_h;
-
-	*rx = (int)fx;
-	*ry = (int)fy;
+	/* convert back to int and return */
+	*x = fx; *y = fy;
 }
 
 VAPI int vgOnLeftClick(void)
@@ -1075,9 +1174,9 @@ VAPI int vgOnRightClick(void)
 	return -(GetKeyState(VK_RBUTTON) >> 15);
 }
 
-VAPI int vgCursorOverlap(int x, int y, int w, int h)
+VAPI int vgCursorOverlap(float x, float y, float w, float h)
 {
-	int mx, my;
+	float mx, my;
 	vgGetCursorPosScaled(&mx, &my);
 	return (mx > x && mx < x + w) && (my > y && my < y + h);
 }

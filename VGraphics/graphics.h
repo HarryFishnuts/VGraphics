@@ -67,8 +67,6 @@ VAPI void vgSetWindowTitle(const char* title);
 VAPI void vgGetScreenSize(int* width, int* height);
 VAPI int  vgWindowIsClosed(void);
 VAPI void vgSetSwapTime(int swapTime);
-VAPI void vgUseFrameSkip(int state);
-VAPI int  vgGetFrameSkipState(void);
 
 /* CLEAR AND SWAP FUNCTIONS */
 VAPI void vgClear(void);

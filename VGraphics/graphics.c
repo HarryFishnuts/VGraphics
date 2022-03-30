@@ -43,6 +43,7 @@
 #include "graphics.h" /* Header */
 
 /* DEFINITIONS */
+#define RENDERSKIP(and) if (_renderSkip && and) return
 
 /* ========INTERNAL RESOURCES======== */
 
@@ -56,6 +57,8 @@ static GLuint _texture;
 static GLuint _depth;
 
 static int _swapTime;
+static int _renderSkip;
+static int _useRenderSkip;
 
 static int _vpx, _vpy, _vpw, _vph;
 static int _windowWidth;
@@ -251,6 +254,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_updates = 0;
 	_layer = 1.0f;
 	_swapTime = VG_SWAP_TIME_MIN;
+	_renderSkip = FALSE;
+	_useRenderSkip = TRUE;
 
 	/* enable DPI awareness */
 	SetProcessDPIAware();
@@ -512,11 +517,21 @@ VAPI void vgSetSwapTime(int swapTime)
 	_swapTime = swapTime;
 }
 
+VAPI void vgUseRenderSkip(int state)
+{
+	_useRenderSkip = state;
+}
+
+VAPI int vgGetRenderSkipState(void)
+{
+	return _renderSkip;
+}
+
 /* CLEAR AND SWAP FUNCTIONS */
 
 VAPI void vgClear(void)
 {
-	 
+	RENDERSKIP(_useRenderSkip);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 	glViewport(0, 0, _resW, _resH);
@@ -526,6 +541,8 @@ VAPI void vgClear(void)
 
 VAPI void vgFill(int r, int g, int b)
 {
+	RENDERSKIP(_useRenderSkip);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
 	glViewport(0, 0, _resW, _resH);
 	glClearColor(r / 255.0f, g / 255.0f, b / 255.0f, 1);
@@ -537,9 +554,14 @@ VAPI void vgSwap(void)
 {
 	/* limit swap time */
 	ULONGLONG currentTime = GetTickCount64();
-	if ((currentTime - __lastSwap) < _swapTime) return;
+	if ((currentTime - __lastSwap) < _swapTime)
+	{
+		_renderSkip = TRUE;
+		return;
+	}
 
-	__lastSwap = currentTime;
+	__lastSwap  = currentTime;
+	_renderSkip = FALSE;
 
 	/* perform swap */
 	rsetup();
@@ -583,7 +605,7 @@ VAPI void vgColor4(int r, int g, int b, int a)
 
 VAPI void vgRect(int x, int y, int w, int h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBegin(GL_QUADS);
 	glVertex2i(x, y);
@@ -600,7 +622,7 @@ VAPI void vgLineSize(float size)
 
 VAPI void vgLine(int x1, int y1, int x2, int y2)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glLineWidth(_lineW);
 
@@ -617,7 +639,7 @@ VAPI void vgPointSize(float size)
 
 VAPI void vgPoint(int x, int y)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glPointSize(_pointW);
 	
@@ -646,7 +668,7 @@ VAPI void vgViewportReset(void)
 
 VAPI void vgRectf(float x, float y, float w, float h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBegin(GL_QUADS);
 	glVertex2f(x, y);
@@ -658,7 +680,7 @@ VAPI void vgRectf(float x, float y, float w, float h)
 
 VAPI void vgLinef(float x1, float y1, float x2, float y2)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glLineWidth(_lineW);
 
@@ -670,7 +692,7 @@ VAPI void vgLinef(float x1, float y1, float x2, float y2)
 
 VAPI void vgPointf(float x, float y)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glPointSize(_pointW);
 
@@ -762,7 +784,7 @@ VAPI void vgTextureFilterReset(void)
 
 VAPI void vgRectTexture(int x, int y, int w, int h)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
 	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
@@ -781,7 +803,7 @@ VAPI void vgRectTexture(int x, int y, int w, int h)
 
 VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
 	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
@@ -838,7 +860,7 @@ VAPI vgShape vgCompileShapeTextured(float* f2d_data, float* t2d_data,
 
 VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */
@@ -850,7 +872,7 @@ VAPI void vgDrawShape(vgShape shape, float x, float y, float r, float s)
 VAPI void vgDrawShapeTextured(vgShape shape, float x, float y, float r,
 	float s)
 {
-	psetup();
+	RENDERSKIP(_useRenderSkip); psetup();
 
 	glTranslatef(x, y, 0); /* lastly, transalate */
 	glRotatef(r, 0, 0, 1); /* second, rotate */

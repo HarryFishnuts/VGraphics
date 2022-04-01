@@ -48,8 +48,8 @@
 /* ========INTERNAL RESOURCES======== */
 
 /* window and rendering data */
-static HWND _window;
-static HDC _deviceContext;
+static HWND  _window;
+static HDC   _deviceContext;
 static HGLRC _glContext;
 
 static GLuint _framebuffer;
@@ -232,7 +232,31 @@ static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
 
 	/* on destroy */
 	case WM_DESTROY:
+
+		/* set windowstate to false */
 		_winState = FALSE;
+
+		/* free all openGL objects */
+		glDeleteFramebuffers(1, &_framebuffer);
+		glDeleteFramebuffers(1, &_eFrameBuffer);
+		glDeleteFramebuffers(1, &_rFrameBuffer);
+		glDeleteRenderbuffers(1, &_depth);
+		glDeleteTextures(1, &_texture);
+
+		for (int i = 0; i < VG_TEXTURES_MAX; i++)
+		{
+			glDeleteTextures(1, &_texBuffer[i]);
+			_texBuffer[i] = NULL;
+		}
+
+		for (int i = 0; i < VG_SHAPES_MAX; i++)
+		{
+			glDeleteLists(_shapeBuffer[i], 1);
+			_shapeBuffer[i] = NULL;
+		}
+
+		/* release DC */
+		ReleaseDC(_window, _deviceContext);
 		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 
@@ -406,26 +430,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 VAPI void vgTerminate(void)
 {
-	/* free device context */
-	ReleaseDC(_window, _deviceContext);
-
-	glDeleteFramebuffers(1, &_framebuffer);
-	glDeleteFramebuffers(1, &_eFrameBuffer);
-	glDeleteFramebuffers(1, &_rFrameBuffer);
-	glDeleteRenderbuffers(1, &_depth);
-	glDeleteTextures(1, &_texture);
-
-	for (int i = 0; i < VG_TEXTURES_MAX; i++)
-	{
-		glDeleteTextures(1, &_texBuffer[i]);
-		_texBuffer[i] = NULL;
-	}
-
-	for (int i = 0; i < VG_SHAPES_MAX; i++)
-	{
-		glDeleteLists(_shapeBuffer[i], 1);
-		_shapeBuffer[i] = NULL;
-	}
+	/* if window is open, close it */
+	if (_winState) DestroyWindow(_window);
 }
 
 /* MODULE UPDATE FUNCTIONS */

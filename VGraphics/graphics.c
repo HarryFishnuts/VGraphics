@@ -257,6 +257,10 @@ static LRESULT CALLBACK vgWProc(HWND hWnd, UINT message,
 
 		/* release DC */
 		ReleaseDC(_window, _deviceContext);
+
+		/* destroy gl context */
+		wglDeleteContext(_glContext);
+
 		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 
@@ -293,11 +297,13 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	int regResult = RegisterClassA(&wClass);
 
 	/* check if reg failed */
-	if (!regResult)
+	/* 1410 means class already exists, so it's ok */
+	int errCode = GetLastError();
+	if (!regResult && errCode != 1410)
 	{
 		char cBuff[0xFF];
 		sprintf(cBuff, "Register Window Class!\nError Code: %d\n",
-			GetLastError());
+			errCode);
 		MessageBoxA(NULL, cBuff, "CRITICAL ENGINE FAILURE", MB_OK);
 		exit(1);
 	}

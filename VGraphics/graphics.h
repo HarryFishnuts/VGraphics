@@ -110,7 +110,7 @@ VAPI void vgRenderScale(float scale);
 VAPI void vgUseRenderScaling(int value);
 VAPI void vgRenderOffset(float x, float y);
 VAPI void vgUseRenderOffset(int value);
-VAPI void vgRenderLayer(unsigned char layer);
+VAPI void vgRenderLayer(float layer);
 
 /* ITEX FUNCTIONS */
 VAPI void vgITexDataClear(void);

@@ -120,14 +120,14 @@ static inline void psetup(void)
 
 	/* generic projection */
 	float ratio = (float)_windowHeight / (float)_windowWidth;
-	gluOrtho2D(-_rScale, _rScale, -(_rScale * ratio),
-		(double)_rScale * ratio);
+	glOrtho(-_rScale, _rScale, -(_rScale * ratio),
+		(double)_rScale * ratio, 0, 0xFFFF);
 
 	/* reset if not using scaling */
 	if (!_useRScale)
 	{
 		glLoadIdentity();
-		gluOrtho2D(-1.0, 1.0, -ratio, ratio);
+		glOrtho(-1.0, 1.0, -ratio, ratio, 0, 0xFFFF);
 	}
 		
 
@@ -138,6 +138,7 @@ static inline void psetup(void)
 	/* change to modelview */
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
 	glTranslatef(0, 0, _layer);
 
 	if (_useROffset)
@@ -150,7 +151,7 @@ static inline void rsetup(void)
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0, _windowWidth, 0, _windowHeight);
+	glOrtho(0, _windowWidth, 0, _windowHeight, 0, 0xFFFF);
 
 	glViewport(0, 0, _windowWidth, _windowHeight);
 
@@ -167,7 +168,7 @@ static inline void esetup(void)
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0, _eWidth, 0, _eHeight);
+	glOrtho(0, _eWidth, 0, _eHeight, 0, 0xFFFF);
 
 	glViewport(0, 0, _eWidth, _eHeight);
 
@@ -919,9 +920,9 @@ VAPI void vgUseRenderOffset(int value)
 	
 }
 
-VAPI void vgRenderLayer(unsigned char layer)
+VAPI void vgRenderLayer(float layer)
 {
-	_layer = (float)layer / 255.0f;
+	_layer = min(0, -layer);
 }
 
 /* ITEX FUNCTIONS */

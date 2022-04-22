@@ -111,6 +111,7 @@ VAPI void vgUseRenderScaling(int value);
 VAPI void vgRenderOffset(float x, float y);
 VAPI void vgUseRenderOffset(int value);
 VAPI void vgRenderLayer(float layer);
+VAPI int  vgCheckIfViewable(float x, float y, float extra);
 
 /* ITEX FUNCTIONS */
 VAPI void vgITexDataClear(void);

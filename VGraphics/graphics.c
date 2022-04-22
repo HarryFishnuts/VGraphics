@@ -36,9 +36,9 @@
 
 #include <Windows.h> /* OpenGL dependency */
 
-#include <glew.h> /* OpenGL extension library */
+#include <glew.h>  /* OpenGL extension library */
 #include <gl/GL.h> /* Graphics library */
-#include <gl/GLU.h> /* Extened graphics library */
+#include <math.h>  /* Math functions */
 
 #include "graphics.h" /* Header */
 
@@ -429,7 +429,8 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 
 	/* setup blend funcs */
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+		GL_ONE, GL_ONE);
 
 	/* set winstate to true */
 	_winState = TRUE;
@@ -917,12 +918,34 @@ VAPI void vgRenderOffset(float x, float y)
 
 VAPI void vgUseRenderOffset(int value)
 {
-	
+	_useROffset = value;
 }
 
 VAPI void vgRenderLayer(float layer)
 {
 	_layer = min(0, -layer);
+}
+
+VAPI int vgCheckIfViewable(float x, float y, float extra)
+{
+	/* undo scale and transform */
+	if (_useROffset)
+	{
+		x -= _rOffsetX;
+		y -= _rOffsetY;
+	}
+	if (_useRScale)
+	{
+		x /= _rScale;
+		y /= _rScale;
+	}
+
+	/* object is now in "normalized screenspace" */
+	/* compare if object is seeable */
+	if (fabsf(x) > (1.0f + extra)) return 0;
+	if (fabsf(y) > (1.0f + extra)) return 0;
+
+	return 1;
 }
 
 /* ITEX FUNCTIONS */
@@ -1179,12 +1202,12 @@ VAPI void vgGetCursorPosScaled(float* x, float* y)
 
 VAPI int vgOnLeftClick(void)
 {
-	return -(GetKeyState(VK_LBUTTON) >> 15);
+	return GetKeyState(VK_LBUTTON) < 0;
 }
 
 VAPI int vgOnRightClick(void)
 {
-	return -(GetKeyState(VK_RBUTTON) >> 15);
+	return GetKeyState(VK_RBUTTON) < 0;
 }
 
 VAPI int vgCursorOverlap(float x, float y, float w, float h)

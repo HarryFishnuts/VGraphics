@@ -75,6 +75,7 @@ static int _useROffset;
 
 /* buffer data */
 static GLuint _texBuffer[VG_TEXTURES_MAX] = { 0 };
+static int _texCount = 0;
 static GLuint _shapeBuffer[VG_SHAPES_MAX] = { 0 };
 
 /* update data */
@@ -96,8 +97,8 @@ static unsigned short _indexes[VG_ITEX_SIZE_MAX][VG_ITEX_SIZE_MAX] = { 0 };
 
 /* texture editing data */
 static vgTexture _eTex;
-static GLuint _eFrameBuffer = 0;
-static GLuint _rFrameBuffer = 0;
+static GLuint    _eFrameBuffer = 0;
+static GLuint    _rFrameBuffer = 0;
 static int _ecolR, _ecolG, _ecolB, _ecolA = 0;
 static int _eWidth, _eHeight = 0;
 static vgTexture _euTex;
@@ -182,7 +183,8 @@ static inline vgTexture findFreeTexture(void)
 {
 	for (int i = 0; i < VG_TEXTURES_MAX; i++)
 	{
-		if (_texBuffer[i] == NULL)
+		int indexActual = (_texCount / 2) + i;
+		if (_texBuffer[i % VG_TEXTURES_MAX] == NULL)
 			return i;
 	}
 }
@@ -283,8 +285,9 @@ VAPI void vgInit(int window_w, int window_h, int resolution_w,
 	_updates = 0;
 	_layer = 1.0f;
 	_swapTime = VG_SWAP_TIME_MIN;
-	_renderSkip = FALSE;
+	_renderSkip    = FALSE;
 	_useRenderSkip = TRUE;
+	_texCount = 0;
 
 	/* enable DPI awareness */
 	SetProcessDPIAware();
@@ -773,6 +776,7 @@ VAPI void vgDestroyTexture(vgTexture tex)
 {
 	glDeleteTextures(1, &_texBuffer[tex]);
 	_texBuffer[tex] = NULL;
+	_texCount--;
 }
 
 VAPI void vgUseTexture(vgTexture target)
@@ -822,13 +826,20 @@ VAPI void vgRectTextureOffset(int x, int y, int w, int h, float s, float t)
 	glBindTexture(GL_TEXTURE_2D, _texBuffer[_useTex]);
 	glColor4ub(_tcolR, _tcolG, _tcolB, _tcolA);
 
+	/* apply texture coordinate offsets */
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+	glTranslatef(s, t, 0);
+
+	glMatrixMode(GL_MODELVIEW);
+
 	glEnable(GL_TEXTURE_2D);
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0 + s, 0 + t); glVertex2i(x, y);
-	glTexCoord2f(0 + s, 1 + t); glVertex2i(x, y + h);
-	glTexCoord2f(1 + s, 1 + t); glVertex2i(x + w, y + h);
-	glTexCoord2f(1 + s, 0 + t); glVertex2i(x + w, y);
+	glTexCoord2f(0, 0); glVertex2i(x, y);
+	glTexCoord2f(0, 1); glVertex2i(x, y + h);
+	glTexCoord2f(1, 1); glVertex2i(x + w, y + h);
+	glTexCoord2f(1, 0); glVertex2i(x + w, y);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);

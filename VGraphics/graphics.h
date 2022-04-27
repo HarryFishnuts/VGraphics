@@ -37,15 +37,15 @@
 #endif
 
 /* DEFINITIONS */
-#define VG_TRUE (int)1
+#define VG_TRUE  (int)1
 #define VG_FALSE (int)0
 #define VG_TEXTURES_MAX 0x400
-#define VG_SHAPES_MAX 0x300
+#define VG_SHAPES_MAX   0x400
 #define VG_WINDOW_SIZE_MIN 500
 #define VG_ITEX_COLORS_MAX 0x10
-#define VG_ITEX_SIZE_MAX 0x40
+#define VG_ITEX_SIZE_MAX   0x40
 #define VG_FLUSH_THRESHOLD 0x800
-#define VG_SWAP_TIME_MIN 0x01
+#define VG_SWAP_TIME_MIN   0x01
 
 /* TYPEDEFS */
 typedef unsigned short vgTexture;
